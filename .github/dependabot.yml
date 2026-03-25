@@ -1,0 +1,31 @@
+version: 2
+
+updates:
+  # GitHub Actions — keep workflow dependencies up to date
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    commit-message:
+      prefix: "ci"
+    labels:
+      - "dependencies"
+      - "ci"
+    reviewers:
+      - "CodeOpsMS"
+    open-pull-requests-limit: 10
+
+  # Docker — monitor kixote/typemill for new image tags
+  - package-ecosystem: "docker"
+    directory: "/charts/typemill"
+    schedule:
+      interval: "daily"
+    commit-message:
+      prefix: "chore"
+    labels:
+      - "dependencies"
+      - "docker"
+    reviewers:
+      - "CodeOpsMS"
+    open-pull-requests-limit: 5
