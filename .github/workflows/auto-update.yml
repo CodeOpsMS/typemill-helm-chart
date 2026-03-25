@@ -1,0 +1,132 @@
+name: Auto-Update Typemill Image
+
+on:
+  schedule:
+    # Check Docker Hub every 6 hours for new tags
+    - cron: '0 */6 * * *'
+  workflow_dispatch: {}
+
+jobs:
+  check-update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check for new Typemill image tag
+        id: check
+        run: |
+          # Get current appVersion from Chart.yaml
+          CURRENT_VERSION=$(grep '^appVersion:' charts/typemill/Chart.yaml | awk '{print $2}' | tr -d '"')
+          echo "Current appVersion: $CURRENT_VERSION"
+
+          # Query Docker Hub for all tags, filter for stable vX.Y.Z releases
+          LATEST_TAG=$(curl -s "https://hub.docker.com/v2/repositories/kixote/typemill/tags/?page_size=100&ordering=last_updated" \
+            | jq -r '.results[].name' \
+            | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
+            | sort -V \
+            | tail -1)
+          echo "Latest Docker Hub tag: $LATEST_TAG"
+
+          if [ -z "$LATEST_TAG" ]; then
+            echo "No stable tags found on Docker Hub"
+            echo "update=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [ "$CURRENT_VERSION" = "$LATEST_TAG" ]; then
+            echo "Already up to date"
+            echo "update=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "New version available: $CURRENT_VERSION → $LATEST_TAG"
+            echo "update=true" >> "$GITHUB_OUTPUT"
+            echo "new_tag=$LATEST_TAG" >> "$GITHUB_OUTPUT"
+            echo "old_tag=$CURRENT_VERSION" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Bump chart version and update appVersion
+        if: steps.check.outputs.update == 'true'
+        run: |
+          NEW_TAG="${{ steps.check.outputs.new_tag }}"
+          OLD_TAG="${{ steps.check.outputs.old_tag }}"
+
+          # Bump chart patch version
+          CURRENT_CHART_VERSION=$(grep '^version:' charts/typemill/Chart.yaml | awk '{print $2}')
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_CHART_VERSION"
+          NEW_CHART_VERSION="${MAJOR}.${MINOR}.$((PATCH + 1))"
+          echo "Chart version: $CURRENT_CHART_VERSION → $NEW_CHART_VERSION"
+
+          # Update Chart.yaml
+          sed -i "s/^version: .*/version: ${NEW_CHART_VERSION}/" charts/typemill/Chart.yaml
+          sed -i "s/^appVersion: .*/appVersion: \"${NEW_TAG}\"/" charts/typemill/Chart.yaml
+
+          # Update image annotation in Chart.yaml
+          sed -i "s|image: kixote/typemill:.*|image: kixote/typemill:${NEW_TAG}|" charts/typemill/Chart.yaml
+
+          # Update changes annotation
+          sed -i "/artifacthub.io\/changes/,/description:/{s/description: .*/description: Update Typemill to ${NEW_TAG}/}" charts/typemill/Chart.yaml
+
+          echo "NEW_CHART_VERSION=$NEW_CHART_VERSION" >> "$GITHUB_ENV"
+          echo "NEW_TAG=$NEW_TAG" >> "$GITHUB_ENV"
+          echo "OLD_TAG=$OLD_TAG" >> "$GITHUB_ENV"
+
+      - name: Commit and push
+        if: steps.check.outputs.update == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add charts/typemill/Chart.yaml
+          git commit -m "chore: update Typemill ${OLD_TAG} → ${NEW_TAG} (chart ${NEW_CHART_VERSION})"
+          git push
+
+      - name: Install Helm
+        if: steps.check.outputs.update == 'true'
+        uses: azure/setup-helm@v4
+        with:
+          version: latest
+
+      - name: Create GitHub Release
+        if: steps.check.outputs.update == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          helm package charts/typemill --destination /tmp
+          gh release create "typemill-${NEW_CHART_VERSION}" \
+            "/tmp/typemill-${NEW_CHART_VERSION}.tgz" \
+            --title "typemill-${NEW_CHART_VERSION}" \
+            --notes "## Typemill Helm Chart ${NEW_CHART_VERSION}
+
+          Automated update: Typemill Docker image ${OLD_TAG} → ${NEW_TAG}
+
+          ### Changes
+          - Updated \`appVersion\` to \`${NEW_TAG}\`
+          - Updated container image reference to \`kixote/typemill:${NEW_TAG}\`"
+
+      - name: Update GitHub Pages index
+        if: steps.check.outputs.update == 'true'
+        run: |
+          # Checkout gh-pages, add new package, update index
+          git fetch origin gh-pages
+          git checkout gh-pages
+
+          cp "/tmp/typemill-${NEW_CHART_VERSION}.tgz" .
+          helm repo index --url https://codeopsms.github.io/typemill-helm-chart/ --merge index.yaml .
+
+          git add "typemill-${NEW_CHART_VERSION}.tgz" index.yaml
+          git commit -m "Release typemill-${NEW_CHART_VERSION}"
+          git push origin gh-pages
+
+          git checkout main
+
+      - name: Push OCI to GHCR
+        if: steps.check.outputs.update == 'true'
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io \
+            -u ${{ github.actor }} \
+            --password-stdin
+
+          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          helm push "/tmp/typemill-${NEW_CHART_VERSION}.tgz" "oci://ghcr.io/${OWNER}/helm-charts"
