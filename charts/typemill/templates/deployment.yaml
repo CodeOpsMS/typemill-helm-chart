@@ -1,0 +1,159 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "typemill.fullname" . }}
+  labels:
+    {{- include "typemill.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  {{- with .Values.strategy }}
+  strategy:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "typemill.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        {{- if .Values.typemill.phpIniConfig }}
+        checksum/php-ini: {{ .Values.typemill.phpIniConfig | toYaml | sha256sum }}
+        {{- end }}
+        {{- if .Values.typemill.htaccess }}
+        checksum/htaccess: {{ .Values.typemill.htaccess | sha256sum }}
+        {{- end }}
+      {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "typemill.labels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "typemill.serviceAccountName" . }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+      containers:
+        - name: {{ .Chart.Name }}
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+          env:
+            - name: TZ
+              value: {{ .Values.typemill.timezone | quote }}
+          {{- if .Values.livenessProbe.enabled }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.livenessProbe.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.livenessProbe.failureThreshold }}
+          {{- end }}
+          {{- if .Values.readinessProbe.enabled }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.readinessProbe.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.readinessProbe.failureThreshold }}
+          {{- end }}
+          {{- if .Values.startupProbe.enabled }}
+          startupProbe:
+            httpGet:
+              path: {{ .Values.startupProbe.path }}
+              port: http
+            failureThreshold: {{ .Values.startupProbe.failureThreshold }}
+            periodSeconds: {{ .Values.startupProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.startupProbe.timeoutSeconds }}
+          {{- end }}
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            {{- if .Values.persistence.enabled }}
+            - name: typemill-data
+              mountPath: /var/www/html/settings
+              subPath: settings
+            - name: typemill-data
+              mountPath: /var/www/html/media
+              subPath: media
+            - name: typemill-data
+              mountPath: /var/www/html/data
+              subPath: data
+            - name: typemill-data
+              mountPath: /var/www/html/cache
+              subPath: cache
+            - name: typemill-data
+              mountPath: /var/www/html/plugins
+              subPath: plugins
+            - name: typemill-data
+              mountPath: /var/www/html/content
+              subPath: content
+            - name: typemill-data
+              mountPath: /var/www/html/themes
+              subPath: themes
+            {{- end }}
+            {{- if .Values.typemill.htaccess }}
+            - name: htaccess
+              mountPath: /var/www/html/.htaccess
+              subPath: .htaccess
+              readOnly: true
+            {{- end }}
+            {{- if .Values.typemill.phpIniConfig }}
+            {{- range $key, $value := .Values.typemill.phpIniConfig }}
+            - name: php-ini-config
+              mountPath: /usr/local/etc/php/conf.d/{{ $key }}
+              subPath: {{ $key }}
+              readOnly: true
+            {{- end }}
+            {{- end }}
+      volumes:
+        {{- if .Values.persistence.enabled }}
+        - name: typemill-data
+          persistentVolumeClaim:
+            claimName: {{ .Values.persistence.existingClaim | default (include "typemill.fullname" .) }}
+        {{- end }}
+        {{- if .Values.typemill.htaccess }}
+        - name: htaccess
+          configMap:
+            name: {{ include "typemill.fullname" . }}-htaccess
+        {{- end }}
+        {{- if .Values.typemill.phpIniConfig }}
+        - name: php-ini-config
+          configMap:
+            name: {{ include "typemill.fullname" . }}-php-ini
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

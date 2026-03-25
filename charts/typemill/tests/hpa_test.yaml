@@ -1,0 +1,87 @@
+suite: hpa tests
+templates:
+  - templates/hpa.yaml
+release:
+  name: test-release
+  namespace: test-ns
+tests:
+  - it: should not render HPA when disabled
+    set:
+      autoscaling.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should render HPA when enabled
+    set:
+      autoscaling.enabled: true
+      autoscaling.minReplicas: 2
+      autoscaling.maxReplicas: 10
+      autoscaling.targetCPUUtilizationPercentage: 80
+    asserts:
+      - isKind:
+          of: HorizontalPodAutoscaler
+      - equal:
+          path: apiVersion
+          value: autoscaling/v2
+      - equal:
+          path: spec.minReplicas
+          value: 2
+      - equal:
+          path: spec.maxReplicas
+          value: 10
+
+  - it: should target the correct deployment
+    set:
+      autoscaling.enabled: true
+    asserts:
+      - equal:
+          path: spec.scaleTargetRef.apiVersion
+          value: apps/v1
+      - equal:
+          path: spec.scaleTargetRef.kind
+          value: Deployment
+      - equal:
+          path: spec.scaleTargetRef.name
+          value: test-release-typemill
+
+  - it: should set CPU metric when configured
+    set:
+      autoscaling.enabled: true
+      autoscaling.targetCPUUtilizationPercentage: 75
+    asserts:
+      - equal:
+          path: spec.metrics[0].resource.name
+          value: cpu
+      - equal:
+          path: spec.metrics[0].resource.target.averageUtilization
+          value: 75
+
+  - it: should set memory metric when configured
+    set:
+      autoscaling.enabled: true
+      autoscaling.targetCPUUtilizationPercentage: 80
+      autoscaling.targetMemoryUtilizationPercentage: 70
+    asserts:
+      - equal:
+          path: spec.metrics[1].resource.name
+          value: memory
+      - equal:
+          path: spec.metrics[1].resource.target.averageUtilization
+          value: 70
+
+  - it: should have correct labels
+    set:
+      autoscaling.enabled: true
+    asserts:
+      - exists:
+          path: metadata.labels["helm.sh/chart"]
+      - equal:
+          path: metadata.labels["app.kubernetes.io/name"]
+          value: typemill
+      - equal:
+          path: metadata.labels["app.kubernetes.io/instance"]
+          value: test-release
+      - equal:
+          path: metadata.labels["app.kubernetes.io/managed-by"]
+          value: Helm

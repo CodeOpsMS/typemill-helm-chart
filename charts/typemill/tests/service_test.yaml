@@ -1,0 +1,47 @@
+suite: service tests
+templates:
+  - templates/service.yaml
+release:
+  name: test-release
+  namespace: test-ns
+tests:
+  - it: should render service with correct type
+    asserts:
+      - isKind:
+          of: Service
+      - equal:
+          path: spec.type
+          value: ClusterIP
+
+  - it: should use correct port
+    set:
+      service.port: 8080
+    asserts:
+      - equal:
+          path: spec.ports[0].port
+          value: 8080
+
+  - it: should use NodePort type when configured
+    set:
+      service.type: NodePort
+    asserts:
+      - equal:
+          path: spec.type
+          value: NodePort
+
+  - it: should have correct selector labels
+    asserts:
+      - equal:
+          path: spec.selector["app.kubernetes.io/name"]
+          value: typemill
+      - equal:
+          path: spec.selector["app.kubernetes.io/instance"]
+          value: test-release
+
+  - it: should have correct labels
+    asserts:
+      - exists:
+          path: metadata.labels["helm.sh/chart"]
+      - equal:
+          path: metadata.labels["app.kubernetes.io/managed-by"]
+          value: Helm

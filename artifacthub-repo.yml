@@ -1,0 +1,12 @@
+# Artifact Hub repository metadata file
+#
+# After registering this repository on ArtifactHub:
+# 1. Sign in at https://artifacthub.io
+# 2. Go to Control Panel → Add Repository
+# 3. Set URL to: https://<username>.github.io/typemill-helm-chart/
+# 4. Copy the generated repositoryID and paste it below
+# 5. (Optional) Apply for Verified Publisher status
+repositoryID: REPLACE_WITH_ARTIFACTHUB_REPOSITORY_ID
+owners:
+  - name: Manfred Lämmerzahl
+    email: maintainer@example.com

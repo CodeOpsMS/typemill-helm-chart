@@ -1,0 +1,6 @@
+remote: origin
+chart-dirs:
+  - charts
+excluded-charts: []
+chart-repos: []
+helm-extra-args: --timeout 600s

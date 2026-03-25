@@ -1,0 +1,13 @@
+{{- if .Values.typemill.phpIniConfig }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "typemill.fullname" . }}-php-ini
+  labels:
+    {{- include "typemill.labels" . | nindent 4 }}
+data:
+  {{- range $key, $value := .Values.typemill.phpIniConfig }}
+  {{ $key }}: |
+    {{- $value | nindent 4 }}
+  {{- end }}
+{{- end }}

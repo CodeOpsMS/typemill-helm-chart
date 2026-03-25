@@ -1,0 +1,8 @@
+# Minimal CI test values (used by chart-testing lint)
+replicaCount: 1
+persistence:
+  enabled: false
+ingress:
+  enabled: false
+typemill:
+  timezone: "Europe/Berlin"

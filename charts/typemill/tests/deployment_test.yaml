@@ -1,0 +1,421 @@
+suite: deployment tests
+templates:
+  - templates/deployment.yaml
+release:
+  name: test-release
+  namespace: test-ns
+tests:
+  - it: should render deployment with correct image
+    set:
+      image.tag: v2.21.2
+    asserts:
+      - isKind:
+          of: Deployment
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: kixote/typemill:v2.21.2
+
+  - it: should use chart appVersion as default tag
+    asserts:
+      - matchRegex:
+          path: spec.template.spec.containers[0].image
+          pattern: "kixote/typemill:.*"
+
+  - it: should have correct replica count
+    set:
+      replicaCount: 3
+    asserts:
+      - equal:
+          path: spec.replicas
+          value: 3
+
+  - it: should not set replicas when autoscaling is enabled
+    set:
+      autoscaling.enabled: true
+    asserts:
+      - notExists:
+          path: spec.replicas
+
+  - it: should use Recreate strategy by default
+    asserts:
+      - equal:
+          path: spec.strategy.type
+          value: Recreate
+
+  - it: should set TZ environment variable
+    set:
+      typemill.timezone: "Europe/Berlin"
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TZ
+            value: "Europe/Berlin"
+
+  - it: should mount persistent volumes when persistence is enabled
+    set:
+      persistence.enabled: true
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: typemill-data
+            mountPath: /var/www/html/settings
+            subPath: settings
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: typemill-data
+            mountPath: /var/www/html/data
+            subPath: data
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: typemill-data
+            mountPath: /var/www/html/content
+            subPath: content
+
+  - it: should not mount persistent volumes when persistence is disabled
+    set:
+      persistence.enabled: false
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: typemill-data
+            mountPath: /var/www/html/settings
+            subPath: settings
+
+  - it: should have liveness probe when enabled
+    set:
+      livenessProbe.enabled: true
+      livenessProbe.path: /tm/login
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe.httpGet.path
+          value: /tm/login
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe.httpGet.port
+          value: http
+
+  - it: should not have liveness probe when disabled
+    set:
+      livenessProbe.enabled: false
+    asserts:
+      - notExists:
+          path: spec.template.spec.containers[0].livenessProbe
+
+  - it: should have startup probe when enabled
+    set:
+      startupProbe.enabled: true
+      startupProbe.path: /tm/login
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].startupProbe.httpGet.path
+          value: /tm/login
+
+  - it: should set termination grace period
+    set:
+      terminationGracePeriodSeconds: 120
+    asserts:
+      - equal:
+          path: spec.template.spec.terminationGracePeriodSeconds
+          value: 120
+
+  - it: should mount php-ini configmap when phpIniConfig is set
+    set:
+      typemill.phpIniConfig:
+        custom.ini: "upload_max_filesize = 200M"
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: php-ini-config
+            mountPath: /usr/local/etc/php/conf.d/custom.ini
+            subPath: custom.ini
+            readOnly: true
+
+  - it: should mount htaccess when configured
+    set:
+      typemill.htaccess: "RewriteEngine On"
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: htaccess
+            mountPath: /var/www/html/.htaccess
+            subPath: .htaccess
+            readOnly: true
+
+  - it: should set resources when specified
+    set:
+      resources.limits.cpu: 500m
+      resources.limits.memory: 256Mi
+      resources.requests.cpu: 100m
+      resources.requests.memory: 128Mi
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].resources.limits.cpu
+          value: 500m
+      - equal:
+          path: spec.template.spec.containers[0].resources.limits.memory
+          value: 256Mi
+
+  - it: should set imagePullSecrets when specified
+    set:
+      imagePullSecrets:
+        - name: my-registry-secret
+    asserts:
+      - equal:
+          path: spec.template.spec.imagePullSecrets[0].name
+          value: my-registry-secret
+
+  - it: should not have imagePullSecrets when empty
+    set:
+      imagePullSecrets: []
+    asserts:
+      - notExists:
+          path: spec.template.spec.imagePullSecrets
+
+  - it: should set podAnnotations when specified
+    set:
+      podAnnotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "80"
+    asserts:
+      - equal:
+          path: spec.template.metadata.annotations["prometheus.io/scrape"]
+          value: "true"
+      - equal:
+          path: spec.template.metadata.annotations["prometheus.io/port"]
+          value: "80"
+
+  - it: should set podLabels when specified
+    set:
+      podLabels:
+        team: backend
+        env: production
+    asserts:
+      - equal:
+          path: spec.template.metadata.labels.team
+          value: backend
+      - equal:
+          path: spec.template.metadata.labels.env
+          value: production
+
+  - it: should set nodeSelector when specified
+    set:
+      nodeSelector:
+        kubernetes.io/os: linux
+        disktype: ssd
+    asserts:
+      - equal:
+          path: spec.template.spec.nodeSelector["kubernetes.io/os"]
+          value: linux
+      - equal:
+          path: spec.template.spec.nodeSelector.disktype
+          value: ssd
+
+  - it: should not have nodeSelector when empty
+    set:
+      nodeSelector: {}
+    asserts:
+      - notExists:
+          path: spec.template.spec.nodeSelector
+
+  - it: should set tolerations when specified
+    set:
+      tolerations:
+        - key: "dedicated"
+          operator: "Equal"
+          value: "typemill"
+          effect: "NoSchedule"
+    asserts:
+      - contains:
+          path: spec.template.spec.tolerations
+          content:
+            key: "dedicated"
+            operator: "Equal"
+            value: "typemill"
+            effect: "NoSchedule"
+
+  - it: should not have tolerations when empty
+    set:
+      tolerations: []
+    asserts:
+      - notExists:
+          path: spec.template.spec.tolerations
+
+  - it: should set affinity when specified
+    set:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/os
+                    operator: In
+                    values:
+                      - linux
+    asserts:
+      - exists:
+          path: spec.template.spec.affinity.nodeAffinity
+
+  - it: should not have affinity when empty
+    set:
+      affinity: {}
+    asserts:
+      - notExists:
+          path: spec.template.spec.affinity
+
+  - it: should use correct imagePullPolicy
+    set:
+      image.pullPolicy: Always
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].imagePullPolicy
+          value: Always
+
+  - it: should use default imagePullPolicy IfNotPresent
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].imagePullPolicy
+          value: IfNotPresent
+
+  - it: should use existingClaim when set
+    set:
+      persistence.enabled: true
+      persistence.existingClaim: my-existing-pvc
+    asserts:
+      - equal:
+          path: spec.template.spec.volumes[0].persistentVolumeClaim.claimName
+          value: my-existing-pvc
+
+  - it: should use generated PVC name when no existingClaim
+    set:
+      persistence.enabled: true
+      persistence.existingClaim: ""
+    asserts:
+      - equal:
+          path: spec.template.spec.volumes[0].persistentVolumeClaim.claimName
+          value: test-release-typemill
+
+  - it: should have readiness probe when enabled
+    set:
+      readinessProbe.enabled: true
+      readinessProbe.path: /tm/login
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.httpGet.path
+          value: /tm/login
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.httpGet.port
+          value: http
+
+  - it: should not have readiness probe when disabled
+    set:
+      readinessProbe.enabled: false
+    asserts:
+      - notExists:
+          path: spec.template.spec.containers[0].readinessProbe
+
+  - it: should set podSecurityContext when specified
+    set:
+      podSecurityContext:
+        fsGroup: 33
+    asserts:
+      - equal:
+          path: spec.template.spec.securityContext.fsGroup
+          value: 33
+
+  - it: should set container securityContext when specified
+    set:
+      securityContext:
+        runAsUser: 33
+        runAsGroup: 33
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].securityContext.runAsUser
+          value: 33
+      - equal:
+          path: spec.template.spec.containers[0].securityContext.runAsGroup
+          value: 33
+
+  - it: should have checksum annotation for phpIniConfig
+    set:
+      typemill.phpIniConfig:
+        custom.ini: "upload_max_filesize = 200M"
+    asserts:
+      - exists:
+          path: spec.template.metadata.annotations["checksum/php-ini"]
+
+  - it: should have checksum annotation for htaccess
+    set:
+      typemill.htaccess: "RewriteEngine On"
+    asserts:
+      - exists:
+          path: spec.template.metadata.annotations["checksum/htaccess"]
+
+  - it: should use fullnameOverride in deployment name
+    set:
+      fullnameOverride: my-custom-typemill
+    asserts:
+      - equal:
+          path: metadata.name
+          value: my-custom-typemill
+
+  - it: should reference correct serviceAccountName
+    set:
+      serviceAccount.create: true
+      serviceAccount.name: ""
+    asserts:
+      - equal:
+          path: spec.template.spec.serviceAccountName
+          value: test-release-typemill
+
+  - it: should use custom serviceAccountName when specified
+    set:
+      serviceAccount.create: true
+      serviceAccount.name: my-sa
+    asserts:
+      - equal:
+          path: spec.template.spec.serviceAccountName
+          value: my-sa
+
+  - it: should use default serviceAccountName when not creating
+    set:
+      serviceAccount.create: false
+      serviceAccount.name: ""
+    asserts:
+      - equal:
+          path: spec.template.spec.serviceAccountName
+          value: default
+
+  - it: should mount all persistent volume subpaths
+    set:
+      persistence.enabled: true
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: typemill-data
+            mountPath: /var/www/html/media
+            subPath: media
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: typemill-data
+            mountPath: /var/www/html/cache
+            subPath: cache
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: typemill-data
+            mountPath: /var/www/html/plugins
+            subPath: plugins
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: typemill-data
+            mountPath: /var/www/html/themes
+            subPath: themes

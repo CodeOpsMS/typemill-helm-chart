@@ -1,0 +1,22 @@
+Typemill has been installed!
+
+Application Version: {{ .Chart.AppVersion }}
+Chart Version: {{ .Chart.Version }}
+
+{{- if .Values.ingress.enabled }}
+
+Access Typemill at:
+{{- range .Values.ingress.hosts }}
+  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ .host }}
+{{- end }}
+{{- else }}
+
+To access Typemill locally, run:
+  kubectl port-forward svc/{{ include "typemill.fullname" . }} 8080:{{ .Values.service.port }}
+  Then open: http://localhost:8080
+{{- end }}
+
+First-time setup:
+  Open /tm/setup to create your admin user.
+
+Documentation: https://docs.typemill.net/

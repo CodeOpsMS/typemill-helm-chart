@@ -1,0 +1,51 @@
+suite: configmap-htaccess tests
+templates:
+  - templates/configmap-htaccess.yaml
+release:
+  name: test-release
+  namespace: test-ns
+tests:
+  - it: should not render when htaccess is empty
+    set:
+      typemill.htaccess: ""
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should render configmap when htaccess is set
+    set:
+      typemill.htaccess: |
+        RewriteEngine On
+        RewriteBase /
+    asserts:
+      - isKind:
+          of: ConfigMap
+      - equal:
+          path: metadata.name
+          value: test-release-typemill-htaccess
+
+  - it: should have correct labels
+    set:
+      typemill.htaccess: "RewriteEngine On"
+    asserts:
+      - exists:
+          path: metadata.labels["helm.sh/chart"]
+      - equal:
+          path: metadata.labels["app.kubernetes.io/name"]
+          value: typemill
+      - equal:
+          path: metadata.labels["app.kubernetes.io/instance"]
+          value: test-release
+      - equal:
+          path: metadata.labels["app.kubernetes.io/managed-by"]
+          value: Helm
+
+  - it: should contain htaccess content in data
+    set:
+      typemill.htaccess: |
+        RewriteEngine On
+        RewriteBase /
+    asserts:
+      - matchRegex:
+          path: data[".htaccess"]
+          pattern: "RewriteEngine On"

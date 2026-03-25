@@ -1,0 +1,11 @@
+{{- if .Values.typemill.htaccess }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "typemill.fullname" . }}-htaccess
+  labels:
+    {{- include "typemill.labels" . | nindent 4 }}
+data:
+  .htaccess: |
+    {{- .Values.typemill.htaccess | nindent 4 }}
+{{- end }}

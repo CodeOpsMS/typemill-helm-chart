@@ -1,0 +1,170 @@
+# -- Number of Typemill replicas. Use 1 with ReadWriteOnce persistence.
+replicaCount: 1
+
+image:
+  # -- Container image repository
+  repository: kixote/typemill
+  # -- Image pull policy
+  pullPolicy: IfNotPresent
+  # -- Overrides the image tag (default: Chart appVersion)
+  tag: ""
+
+# -- Image pull secrets for private registries
+imagePullSecrets: []
+# -- Override the chart name
+nameOverride: ""
+# -- Override the full release name
+fullnameOverride: ""
+
+serviceAccount:
+  # -- Create a ServiceAccount
+  create: true
+  # -- Annotations for the ServiceAccount
+  annotations: {}
+  # -- Name of the ServiceAccount (auto-generated if empty)
+  name: ""
+  # -- Disable auto-mounting of service account token (security best practice)
+  automountServiceAccountToken: false
+
+# -- Annotations to add to the pod
+podAnnotations: {}
+# -- Labels to add to the pod
+podLabels: {}
+
+# -- Pod security context
+podSecurityContext: {}
+  # fsGroup: 33
+
+# -- Container security context
+securityContext: {}
+  # runAsUser: 33
+  # runAsGroup: 33
+
+service:
+  # -- Service type
+  type: ClusterIP
+  # -- Service port
+  port: 80
+
+ingress:
+  # -- Enable ingress
+  enabled: false
+  # -- Ingress class name
+  className: ""
+  # -- Ingress annotations
+  annotations: {}
+  # -- Ingress hosts configuration
+  hosts:
+    - host: typemill.example.com
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  # -- Ingress TLS configuration
+  tls: []
+  #  - secretName: typemill-tls
+  #    hosts:
+  #      - typemill.example.com
+
+resources: {}
+  # limits:
+  #   cpu: 500m
+  #   memory: 256Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+autoscaling:
+  # -- Enable Horizontal Pod Autoscaler
+  enabled: false
+  # -- Minimum number of replicas
+  minReplicas: 1
+  # -- Maximum number of replicas
+  maxReplicas: 10
+  # -- Target CPU utilization percentage
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+# -- Node selector constraints
+nodeSelector: {}
+# -- Tolerations for pod scheduling
+tolerations: []
+# -- Affinity rules for pod scheduling
+affinity: {}
+
+# -- Deployment strategy. Use Recreate with ReadWriteOnce PVC.
+strategy:
+  type: Recreate
+
+# -- Termination grace period in seconds
+terminationGracePeriodSeconds: 60
+
+persistence:
+  # -- Enable persistence for Typemill data
+  enabled: true
+  # -- Storage class (empty string uses cluster default)
+  storageClass: ""
+  # -- PVC access mode
+  accessMode: ReadWriteOnce
+  # -- PVC storage size
+  size: 5Gi
+  # -- Use an existing PVC instead of creating a new one
+  existingClaim: ""
+
+livenessProbe:
+  # -- Enable liveness probe
+  enabled: true
+  # -- Path for HTTP liveness check
+  path: /tm/login
+  # -- Initial delay before first check (seconds)
+  initialDelaySeconds: 15
+  # -- Check interval (seconds)
+  periodSeconds: 10
+  # -- Timeout per check (seconds)
+  timeoutSeconds: 5
+  # -- Failure threshold before restart
+  failureThreshold: 3
+
+readinessProbe:
+  # -- Enable readiness probe
+  enabled: true
+  # -- Path for HTTP readiness check
+  path: /tm/login
+  # -- Initial delay before first check (seconds)
+  initialDelaySeconds: 10
+  # -- Check interval (seconds)
+  periodSeconds: 5
+  # -- Timeout per check (seconds)
+  timeoutSeconds: 3
+  # -- Failure threshold before marking unready
+  failureThreshold: 3
+
+startupProbe:
+  # -- Enable startup probe
+  enabled: true
+  # -- Path for HTTP startup check
+  path: /tm/login
+  # -- Failure threshold (startup gets periodSeconds * failureThreshold to start)
+  failureThreshold: 30
+  # -- Check interval during startup (seconds)
+  periodSeconds: 5
+  # -- Timeout per check (seconds)
+  timeoutSeconds: 3
+
+typemill:
+  # -- Timezone for the container (TZ database format)
+  timezone: "UTC"
+
+  # -- PHP INI configuration overrides. Each key becomes a file in /usr/local/etc/php/conf.d/
+  phpIniConfig:
+    typemill-recommended.ini: |
+      upload_max_filesize = 100M
+      post_max_size = 100M
+      max_execution_time = 60
+      output_buffering = On
+
+  # -- Custom .htaccess content. Leave empty to use the default shipped with the image.
+  htaccess: ""
+
+  # Plugin and theme installation is done via the Typemill admin UI
+  # at /tm/plugins and /tm/themes. Ensure the plugins/ and themes/
+  # directories are persisted via the PVC.

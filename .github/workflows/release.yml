@@ -1,0 +1,47 @@
+name: Release Helm Charts
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config user.name "$GITHUB_ACTOR"
+          git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: latest
+
+      - name: Run chart-releaser (GitHub Pages)
+        uses: helm/chart-releaser-action@v1.7.0
+        env:
+          CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+        with:
+          charts_dir: charts
+
+      - name: Push Helm Chart to GHCR as OCI
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io \
+            -u ${{ github.actor }} \
+            --password-stdin
+
+          CHART_VERSION=$(grep '^version:' charts/typemill/Chart.yaml | awk '{print $2}')
+
+          helm package charts/typemill --destination /tmp
+
+          helm push /tmp/typemill-${CHART_VERSION}.tgz oci://ghcr.io/${{ github.repository_owner }}/helm-charts

@@ -1,0 +1,48 @@
+apiVersion: v2
+name: typemill
+description: >-
+  Helm chart for Typemill - a lightweight open-source flat-file CMS
+  for creating websites and eBooks from Markdown.
+type: application
+version: 1.0.0
+appVersion: "v2.21.2"
+kubeVersion: ">=1.19.0-0"
+keywords:
+  - typemill
+  - cms
+  - flat-file
+  - markdown
+  - documentation
+  - ebook
+  - wiki
+home: https://typemill.net
+sources:
+  - https://github.com/typemill/typemill
+  - https://hub.docker.com/r/kixote/typemill
+maintainers:
+  - name: Manfred Lämmerzahl
+    email: maintainer@example.com
+    url: https://www.laemmerzahl.de
+icon: https://typemill.net/media/live/typemill-hero-1.png
+annotations:
+  artifacthub.io/license: MIT
+  artifacthub.io/category: integration-delivery
+  artifacthub.io/containsSecurityUpdates: "false"
+  artifacthub.io/changes: |
+    - kind: added
+      description: Initial release of Typemill Helm chart for Typemill 2.x
+  artifacthub.io/images: |
+    - name: typemill
+      image: kixote/typemill:v2.21.2
+  artifacthub.io/links: |
+    - name: Typemill Documentation
+      url: https://docs.typemill.net/
+    - name: Typemill Source
+      url: https://github.com/typemill/typemill
+    - name: Docker Image
+      url: https://hub.docker.com/r/kixote/typemill
+    - name: support
+      url: https://github.com/codeopsms/typemill-helm-chart/issues
+  artifacthub.io/screenshots: |
+    - title: Typemill Editor
+      url: https://typemill.net/media/original/typemill-editor-072025.webp

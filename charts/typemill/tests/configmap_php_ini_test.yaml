@@ -1,0 +1,68 @@
+suite: configmap-php-ini tests
+templates:
+  - templates/configmap-php-ini.yaml
+release:
+  name: test-release
+  namespace: test-ns
+tests:
+  - it: should not render when phpIniConfig is empty
+    set:
+      typemill.phpIniConfig: null
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should render configmap when phpIniConfig is set
+    set:
+      typemill.phpIniConfig:
+        custom.ini: |
+          upload_max_filesize = 200M
+    asserts:
+      - isKind:
+          of: ConfigMap
+      - equal:
+          path: metadata.name
+          value: test-release-typemill-php-ini
+
+  - it: should have correct labels
+    set:
+      typemill.phpIniConfig:
+        custom.ini: "upload_max_filesize = 200M"
+    asserts:
+      - exists:
+          path: metadata.labels["helm.sh/chart"]
+      - equal:
+          path: metadata.labels["app.kubernetes.io/name"]
+          value: typemill
+      - equal:
+          path: metadata.labels["app.kubernetes.io/instance"]
+          value: test-release
+      - equal:
+          path: metadata.labels["app.kubernetes.io/managed-by"]
+          value: Helm
+
+  - it: should contain single php ini file
+    set:
+      typemill.phpIniConfig:
+        custom.ini: |
+          upload_max_filesize = 200M
+    asserts:
+      - matchRegex:
+          path: data["custom.ini"]
+          pattern: "upload_max_filesize = 200M"
+
+  - it: should contain multiple php ini files
+    set:
+      typemill.phpIniConfig:
+        uploads.ini: |
+          upload_max_filesize = 200M
+          post_max_size = 200M
+        performance.ini: |
+          max_execution_time = 120
+    asserts:
+      - matchRegex:
+          path: data["uploads.ini"]
+          pattern: "upload_max_filesize = 200M"
+      - matchRegex:
+          path: data["performance.ini"]
+          pattern: "max_execution_time = 120"
