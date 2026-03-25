@@ -1,17 +1,19 @@
 # Typemill Helm Chart
 
-[![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/typemill-helm-chart)](https://artifacthub.io/packages/search?repo=typemill-helm-chart)
+[![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/typemill-helm-chart)](https://artifacthub.io/packages/helm/typemill-helm-chart/typemill)
+[![Release](https://img.shields.io/github/v/release/CodeOpsMS/typemill-helm-chart?label=Chart%20Version)](https://github.com/CodeOpsMS/typemill-helm-chart/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](charts/typemill/LICENSE)
 
 > **This Helm chart is a custom helm chart packaged by Lämmerzahl GmbH.**
 > There is no official support from Typemill itself.
-> Actively maintained — when a new Typemill version is released, a new chart version will be published.
+> Fully automated — when a new Typemill Docker image is released, a new chart version is published automatically.
 
 ## About Typemill
 
 The open-source flat-file CMS to create websites and eBooks from Markdown.
 Use it for handbooks, documentations, manuals, web-novels, traditional websites, and more.
 
-- **Official Documentation:** https://docs.typemill.net/
+- **Official Documentation:** https://typemill.net/getting-started
 - **Typemill GitHub:** https://github.com/typemill/typemill
 - **Docker Image:** https://hub.docker.com/r/kixote/typemill
 
@@ -19,11 +21,11 @@ Use it for handbooks, documentations, manuals, web-novels, traditional websites,
 
 | | |
 |---|---|
-| **Chart Version** | ![Version: 1.0.0](https://img.shields.io/badge/Version-1.0.0-informational?style=flat-square) |
-| **App Version** | ![AppVersion: v2.21.2](https://img.shields.io/badge/AppVersion-v2.21.2-informational?style=flat-square) |
 | **Kubernetes** | >= 1.19.0 |
 | **Helm** | >= 3.8.0 |
 | **License** | MIT |
+| **Source** | [GitHub](https://github.com/CodeOpsMS/typemill-helm-chart) |
+| **OCI Registry** | `ghcr.io/codeopsms/helm-charts/typemill` |
 
 ## Prerequisites
 
@@ -45,7 +47,6 @@ helm install typemill typemill/typemill --namespace typemill --create-namespace
 
 ```bash
 helm install typemill oci://ghcr.io/codeopsms/helm-charts/typemill \
-  --version 1.0.0 \
   --namespace typemill --create-namespace
 ```
 
@@ -81,7 +82,7 @@ ingress:
 ## First-Time Setup
 
 1. Deploy Typemill (without TLS for first setup)
-2. Access `http://your-typemill.example.com/tm/setup` and create your admin user
+2. Access your Typemill URL — the setup wizard will guide you through creating an admin user
 3. If using a reverse proxy with TLS: Navigate to **Settings → System → Proxy** and enable "Use X-Forwarded Headers"
 4. Upgrade your deployment with TLS enabled
 
@@ -90,6 +91,17 @@ ingress:
 Create a backup of your existing **settings**, **content**, **media**, **plugins**, **themes**, and **data** directories.
 Copy them into the PVC of the new Typemill deployment.
 If deploying behind a proxy with TLS, edit `settings/settings.yaml` and change `proxy: false` to `proxy: true`.
+
+## Automation
+
+This repository is fully automated:
+
+| What | How | Interval |
+|------|-----|----------|
+| New Typemill Docker image | Auto-update workflow bumps chart version and releases | Every 6 hours |
+| GitHub Actions updates | Dependabot PRs with auto-merge | Weekly |
+
+No manual intervention is required for routine updates.
 
 ## Development
 
@@ -112,21 +124,9 @@ helm unittest charts/typemill
 helm template test-release charts/typemill
 ```
 
-## Releasing a New Version
-
-1. Update `charts/typemill/Chart.yaml`:
-   - Bump `version` (chart version, SemVer)
-   - Update `appVersion` if Typemill Docker image version changed
-   - Update `artifacthub.io/changes` annotation
-2. Commit and push to `main`
-3. GitHub Actions automatically:
-   - Packages and releases to GitHub Pages
-   - Pushes OCI artifact to `ghcr.io/codeopsms/helm-charts/typemill`
-4. ArtifactHub picks up the new version within minutes
-
 ## Feature Request or Bug Found?
 
-Please open a GitHub issue: [typemill-helm-chart](https://github.com/codeopsms/typemill-helm-chart/issues)
+Please open a GitHub issue: [typemill-helm-chart](https://github.com/CodeOpsMS/typemill-helm-chart/issues)
 
 ## Maintainer
 
