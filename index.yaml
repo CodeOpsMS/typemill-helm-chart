@@ -5,6 +5,57 @@ entries:
       artifacthub.io/category: integration-delivery
       artifacthub.io/changes: |
         - kind: added
+          description: Update Typemill to v2.21.3
+      artifacthub.io/containsSecurityUpdates: "false"
+      artifacthub.io/images: |
+        - name: typemill
+          image: kixote/typemill:v2.21.3
+      artifacthub.io/license: MIT
+      artifacthub.io/links: |
+        - name: Typemill Documentation
+          url: https://docs.typemill.net/
+        - name: Typemill Source
+          url: https://github.com/typemill/typemill
+        - name: Docker Image
+          url: https://hub.docker.com/r/kixote/typemill
+        - name: support
+          url: https://github.com/codeopsms/typemill-helm-chart/issues
+      artifacthub.io/screenshots: |
+        - title: Typemill Editor
+          url: https://typemill.net/media/original/typemill-editor-072025.webp
+    apiVersion: v2
+    appVersion: v2.21.3
+    created: "2026-03-25T12:06:48.857542466Z"
+    description: Helm chart for Typemill - a lightweight open-source flat-file CMS
+      for creating websites and eBooks from Markdown.
+    digest: c8d4677c8ea71341c2a2be81b4e7da41630de44e88839cec7684de2a7b44f4c6
+    home: https://typemill.net
+    icon: https://typemill.net/media/live/typemill-hero-1.png
+    keywords:
+    - typemill
+    - cms
+    - flat-file
+    - markdown
+    - documentation
+    - ebook
+    - wiki
+    kubeVersion: '>=1.19.0-0'
+    maintainers:
+    - email: maintainer@example.com
+      name: Manfred Lämmerzahl
+      url: https://www.laemmerzahl.de
+    name: typemill
+    sources:
+    - https://github.com/typemill/typemill
+    - https://hub.docker.com/r/kixote/typemill
+    type: application
+    urls:
+    - https://codeopsms.github.io/typemill-helm-chart/typemill-1.0.1.tgz
+    version: 1.0.1
+  - annotations:
+      artifacthub.io/category: integration-delivery
+      artifacthub.io/changes: |
+        - kind: added
           description: Initial release of Typemill Helm chart for Typemill 2.x
       artifacthub.io/containsSecurityUpdates: "false"
       artifacthub.io/images: |
@@ -25,7 +76,7 @@ entries:
           url: https://typemill.net/media/original/typemill-editor-072025.webp
     apiVersion: v2
     appVersion: v2.21.2
-    created: "2026-03-25T12:38:20.087683+01:00"
+    created: "2026-03-25T12:06:48.856843108Z"
     description: Helm chart for Typemill - a lightweight open-source flat-file CMS
       for creating websites and eBooks from Markdown.
     digest: a322a20e6df5fca62f46d6f79e4c9ab245493d2d8db46d094cd988b510454910
@@ -52,4 +103,4 @@ entries:
     urls:
     - https://codeopsms.github.io/typemill-helm-chart/typemill-1.0.0.tgz
     version: 1.0.0
-generated: "2026-03-25T12:38:20.087267+01:00"
+generated: "2026-03-25T12:06:48.856027214Z"
