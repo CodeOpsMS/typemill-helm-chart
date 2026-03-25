@@ -6,7 +6,7 @@
 # 3. Set URL to: https://<username>.github.io/typemill-helm-chart/
 # 4. Copy the generated repositoryID and paste it below
 # 5. (Optional) Apply for Verified Publisher status
-repositoryID: REPLACE_WITH_ARTIFACTHUB_REPOSITORY_ID
+repositoryID: e36e8bd4-a420-40b3-8c3d-8ab784a2d6de
 owners:
   - name: Manfred Lämmerzahl
     email: maintainer@example.com
