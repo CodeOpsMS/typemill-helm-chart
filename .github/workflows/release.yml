@@ -44,4 +44,5 @@ jobs:
 
           helm package charts/typemill --destination /tmp
 
-          helm push /tmp/typemill-${CHART_VERSION}.tgz oci://ghcr.io/${{ github.repository_owner }}/helm-charts
+          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          helm push /tmp/typemill-${CHART_VERSION}.tgz oci://ghcr.io/${OWNER}/helm-charts
