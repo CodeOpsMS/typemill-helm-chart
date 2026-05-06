@@ -26,6 +26,10 @@
         "tag": {
           "type": "string",
           "description": "Image tag override (default: Chart appVersion)"
+        },
+        "digest": {
+          "type": "string",
+          "description": "Optional image digest for immutable pinning. If set, it overrides image.tag."
         }
       },
       "required": [
@@ -447,6 +451,10 @@
                     "IfNotPresent",
                     "Never"
                   ]
+                },
+                "digest": {
+                  "type": "string",
+                  "description": "Optional yq image digest for immutable pinning. If set, it overrides tag."
                 }
               },
               "required": [

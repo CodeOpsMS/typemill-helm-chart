@@ -419,3 +419,11 @@ tests:
             name: typemill-data
             mountPath: /var/www/html/themes
             subPath: themes
+
+  - it: should render image digest when set
+    set:
+      image.digest: sha256:1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: kixote/typemill@sha256:1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef

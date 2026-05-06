@@ -8,6 +8,8 @@ image:
   pullPolicy: IfNotPresent
   # -- Overrides the image tag (default: Chart appVersion)
   tag: ""
+  # -- Optional image digest for immutable pinning. If set, this overrides the tag.
+  digest: ""
 
 # -- Image pull secrets for private registries
 imagePullSecrets: []
@@ -92,6 +94,8 @@ ai:
       # -- yq image used to merge AI settings into Typemill persisted YAML files.
       repository: mikefarah/yq
       tag: "4.49.2"
+      # -- Optional yq image digest for immutable pinning. If set, this overrides the tag.
+      digest: ""
       pullPolicy: IfNotPresent
     # -- Security context for the AI bootstrap init container.
     # By default this is empty so clusters can inherit their pod-level defaults.
