@@ -19,4 +19,13 @@ To access Typemill locally, run:
 First-time setup:
   Open /tm/setup to create your admin user.
 
+{{- if .Values.ai.enabled }}
+
+AI bootstrap is enabled:
+  Service: {{ .Values.ai.service }}
+  Secret: {{ .Values.ai.existingSecret }}
+
+Typemill users still need to accept the selected AI provider in the Kixote AI interface.
+{{- end }}
+
 Documentation: https://docs.typemill.net/

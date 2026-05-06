@@ -1,0 +1,188 @@
+suite: ai configuration tests
+templates:
+  - templates/deployment.yaml
+release:
+  name: test-release
+  namespace: test-ns
+tests:
+  - it: should not render ai init container by default
+    asserts:
+      - notExists:
+          path: spec.template.spec.initContainers
+
+  - it: should render chatgpt ai init container with existing secret
+    set:
+      ai.enabled: true
+      ai.service: chatgpt
+      ai.existingSecret: typemill-ai-secret
+      ai.chatgptModel: gpt-4.1
+      ai.temperature: "0.6"
+      ai.outputTokens: 6000
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].name
+          value: ai-config
+      - equal:
+          path: spec.template.spec.initContainers[0].image
+          value: mikefarah/yq:4.49.2
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: TYPEMILL_AI_SERVICE
+            value: chatgpt
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: TYPEMILL_CHATGPT_MODEL
+            value: gpt-4.1
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: TYPEMILL_AI_TEMPERATURE
+            value: "0.6"
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: TYPEMILL_AI_OUTPUT_TOKENS
+            value: "6000"
+      - equal:
+          path: spec.template.spec.initContainers[0].env[5].valueFrom.secretKeyRef.name
+          value: typemill-ai-secret
+      - equal:
+          path: spec.template.spec.initContainers[0].env[5].valueFrom.secretKeyRef.key
+          value: chatgptKey
+      - contains:
+          path: spec.template.spec.initContainers[0].volumeMounts
+          content:
+            name: typemill-data
+            mountPath: /work/settings
+            subPath: settings
+
+  - it: should not expose provider api keys to the typemill application container
+    set:
+      ai.enabled: true
+      ai.service: chatgpt
+      ai.existingSecret: typemill-ai-secret
+    asserts:
+      - lengthEqual:
+          path: spec.template.spec.containers[0].env
+          count: 1
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TZ
+            value: UTC
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TYPEMILL_CHATGPT_KEY
+
+  - it: should render custom chatgpt secret key
+    set:
+      ai.enabled: true
+      ai.service: chatgpt
+      ai.existingSecret: typemill-ai-secret
+      ai.secretKeys.chatgptKey: openai-api-key
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].env[5].valueFrom.secretKeyRef.key
+          value: openai-api-key
+
+  - it: should render custom yq image and pull policy
+    set:
+      ai.enabled: true
+      ai.service: chatgpt
+      ai.existingSecret: typemill-ai-secret
+      ai.initContainer.image.repository: ghcr.io/example/yq
+      ai.initContainer.image.tag: 4.49.2@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      ai.initContainer.image.pullPolicy: Always
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].image
+          value: ghcr.io/example/yq:4.49.2@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      - equal:
+          path: spec.template.spec.initContainers[0].imagePullPolicy
+          value: Always
+
+  - it: should render ai init container resources
+    set:
+      ai.enabled: true
+      ai.service: chatgpt
+      ai.existingSecret: typemill-ai-secret
+      ai.initContainer.resources:
+        requests:
+          cpu: 10m
+          memory: 32Mi
+        limits:
+          memory: 64Mi
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].resources.requests.cpu
+          value: 10m
+      - equal:
+          path: spec.template.spec.initContainers[0].resources.requests.memory
+          value: 32Mi
+      - equal:
+          path: spec.template.spec.initContainers[0].resources.limits.memory
+          value: 64Mi
+
+  - it: should render ai init container security context
+    set:
+      ai.enabled: true
+      ai.service: chatgpt
+      ai.existingSecret: typemill-ai-secret
+      ai.initContainer.securityContext:
+        runAsUser: 33
+        runAsGroup: 33
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].securityContext.runAsUser
+          value: 33
+      - equal:
+          path: spec.template.spec.initContainers[0].securityContext.runAsGroup
+          value: 33
+
+  - it: should render claude ai init container with custom secret key
+    set:
+      ai.enabled: true
+      ai.service: claude
+      ai.existingSecret: typemill-ai-secret
+      ai.secretKeys.claudeKey: anthropic-api-key
+      ai.claudeModel: claude-sonnet-4-5
+    asserts:
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: TYPEMILL_AI_SERVICE
+            value: claude
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: TYPEMILL_CLAUDE_MODEL
+            value: claude-sonnet-4-5
+      - notContains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: TYPEMILL_CHATGPT_KEY
+      - equal:
+          path: spec.template.spec.initContainers[0].env[5].valueFrom.secretKeyRef.name
+          value: typemill-ai-secret
+      - equal:
+          path: spec.template.spec.initContainers[0].env[5].valueFrom.secretKeyRef.key
+          value: anthropic-api-key
+
+  - it: should fail when ai is enabled without persistence
+    set:
+      ai.enabled: true
+      ai.existingSecret: typemill-ai-secret
+      persistence.enabled: false
+    asserts:
+      - failedTemplate:
+          errorMessage: "ai.enabled requires persistence.enabled because Typemill stores AI settings under /var/www/html/settings"
+
+  - it: should fail when ai is enabled without existing secret
+    set:
+      ai.enabled: true
+    asserts:
+      - failedTemplate:
+          errorMessage: "ai.enabled requires ai.existingSecret with the configured provider API key"
