@@ -65,8 +65,6 @@ ingress:
   #    hosts:
   #      - typemill.example.com
 
-
-
 ai:
   # -- Enable Typemill AI configuration bootstrap.
   # This writes/updates AI provider settings in the persisted Typemill settings files
