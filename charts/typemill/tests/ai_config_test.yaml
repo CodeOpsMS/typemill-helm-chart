@@ -35,6 +35,16 @@ tests:
           content:
             name: TYPEMILL_CHATGPT_MODEL
             value: gpt-4.1
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: TYPEMILL_AI_TEMPERATURE
+            value: "0.6"
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: TYPEMILL_AI_OUTPUT_TOKENS
+            value: "6000"
       - equal:
           path: spec.template.spec.initContainers[0].env[5].valueFrom.secretKeyRef.name
           value: typemill-ai-secret
@@ -47,6 +57,74 @@ tests:
             name: typemill-data
             mountPath: /work/settings
             subPath: settings
+
+  - it: should not expose provider api keys to the typemill application container
+    set:
+      ai.enabled: true
+      ai.service: chatgpt
+      ai.existingSecret: typemill-ai-secret
+    asserts:
+      - lengthEqual:
+          path: spec.template.spec.containers[0].env
+          count: 1
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TZ
+            value: UTC
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TYPEMILL_CHATGPT_KEY
+
+  - it: should render custom chatgpt secret key
+    set:
+      ai.enabled: true
+      ai.service: chatgpt
+      ai.existingSecret: typemill-ai-secret
+      ai.secretKeys.chatgptKey: openai-api-key
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].env[5].valueFrom.secretKeyRef.key
+          value: openai-api-key
+
+  - it: should render custom yq image and pull policy
+    set:
+      ai.enabled: true
+      ai.service: chatgpt
+      ai.existingSecret: typemill-ai-secret
+      ai.initContainer.image.repository: ghcr.io/example/yq
+      ai.initContainer.image.tag: 4.49.2@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      ai.initContainer.image.pullPolicy: Always
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].image
+          value: ghcr.io/example/yq:4.49.2@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      - equal:
+          path: spec.template.spec.initContainers[0].imagePullPolicy
+          value: Always
+
+  - it: should render ai init container resources
+    set:
+      ai.enabled: true
+      ai.service: chatgpt
+      ai.existingSecret: typemill-ai-secret
+      ai.initContainer.resources:
+        requests:
+          cpu: 10m
+          memory: 32Mi
+        limits:
+          memory: 64Mi
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].resources.requests.cpu
+          value: 10m
+      - equal:
+          path: spec.template.spec.initContainers[0].resources.requests.memory
+          value: 32Mi
+      - equal:
+          path: spec.template.spec.initContainers[0].resources.limits.memory
+          value: 64Mi
 
   - it: should render ai init container security context
     set:
@@ -82,6 +160,10 @@ tests:
           content:
             name: TYPEMILL_CLAUDE_MODEL
             value: claude-sonnet-4-5
+      - notContains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: TYPEMILL_CHATGPT_KEY
       - equal:
           path: spec.template.spec.initContainers[0].env[5].valueFrom.secretKeyRef.name
           value: typemill-ai-secret
