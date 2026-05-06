@@ -20,7 +20,7 @@ sources:
   - https://github.com/typemill/typemill
   - https://hub.docker.com/r/kixote/typemill
 maintainers:
-  - name: Manfred Lämmerzahl
+  - name: codeopsms
     email: maintainer@example.com
     url: https://github.com/codeopsms
 icon: https://typemill.net/media/live/typemill-hero-1.png
