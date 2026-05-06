@@ -5,6 +5,59 @@ entries:
       artifacthub.io/category: integration-delivery
       artifacthub.io/changes: |
         - kind: added
+          description: Add optional Typemill AI provider configuration bootstrap
+        - kind: added
+          description: Update Typemill to v2.22.0
+      artifacthub.io/containsSecurityUpdates: "false"
+      artifacthub.io/images: |
+        - name: typemill
+          image: kixote/typemill:v2.22.0
+      artifacthub.io/license: MIT
+      artifacthub.io/links: |
+        - name: Typemill Documentation
+          url: https://docs.typemill.net/
+        - name: Typemill Source
+          url: https://github.com/typemill/typemill
+        - name: Docker Image
+          url: https://hub.docker.com/r/kixote/typemill
+        - name: support
+          url: https://github.com/codeopsms/typemill-helm-chart/issues
+      artifacthub.io/screenshots: |
+        - title: Typemill Editor
+          url: https://typemill.net/media/original/typemill-editor-072025.webp
+    apiVersion: v2
+    appVersion: v2.22.0
+    created: "2026-05-06T21:02:32.132131675Z"
+    description: Helm chart for Typemill - a lightweight open-source flat-file CMS
+      for creating websites and eBooks from Markdown.
+    digest: 333b91ca785f84de079335f53cab3d2672bcefb9c7d1346a47a78c960ed1c6fc
+    home: https://typemill.net
+    icon: https://typemill.net/media/live/typemill-hero-1.png
+    keywords:
+    - typemill
+    - cms
+    - flat-file
+    - markdown
+    - documentation
+    - ebook
+    - wiki
+    kubeVersion: '>=1.19.0-0'
+    maintainers:
+    - email: maintainer@example.com
+      name: codeopsms
+      url: https://github.com/codeopsms
+    name: typemill
+    sources:
+    - https://github.com/typemill/typemill
+    - https://hub.docker.com/r/kixote/typemill
+    type: application
+    urls:
+    - https://github.com/CodeOpsMS/typemill-helm-chart/releases/download/typemill-1.1.0/typemill-1.1.0.tgz
+    version: 1.1.0
+  - annotations:
+      artifacthub.io/category: integration-delivery
+      artifacthub.io/changes: |
+        - kind: added
           description: Update Typemill to v2.22.0
       artifacthub.io/containsSecurityUpdates: "false"
       artifacthub.io/images: |
@@ -154,4 +207,4 @@ entries:
     urls:
     - https://codeopsms.github.io/typemill-helm-chart/typemill-1.0.0.tgz
     version: 1.0.0
-generated: "2026-04-20T00:48:41.773100689Z"
+generated: "2026-05-06T21:02:32.132145791Z"
