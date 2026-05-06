@@ -65,6 +65,43 @@ ingress:
   #    hosts:
   #      - typemill.example.com
 
+
+
+ai:
+  # -- Enable Typemill AI configuration bootstrap.
+  # This writes/updates AI provider settings in the persisted Typemill settings files
+  # on every pod start before the application container starts.
+  enabled: false
+  # -- AI service to configure. Supported by Typemill: chatgpt, claude.
+  service: chatgpt
+  # -- Existing Kubernetes Secret containing provider API keys.
+  existingSecret: ""
+  secretKeys:
+    # -- Secret key name for the OpenAI/ChatGPT API key.
+    chatgptKey: chatgptKey
+    # -- Secret key name for the Anthropic/Claude API key.
+    claudeKey: claudeKey
+  # -- ChatGPT/OpenAI model configured in Typemill when service=chatgpt.
+  chatgptModel: gpt-4.1
+  # -- Claude model configured in Typemill when service=claude.
+  claudeModel: claude-sonnet-4-5
+  # -- Typemill AI temperature setting as string to match Typemill form values.
+  temperature: "0.7"
+  # -- Typemill AI maximum output token setting.
+  outputTokens: 4000
+  initContainer:
+    image:
+      # -- yq image used to merge AI settings into Typemill persisted YAML files.
+      repository: mikefarah/yq
+      tag: "4.49.2"
+      pullPolicy: IfNotPresent
+    # -- Security context for the AI bootstrap init container.
+    # By default this is empty so clusters can inherit their pod-level defaults.
+    securityContext: {}
+      # runAsUser: 0
+      # runAsGroup: 0
+    resources: {}
+
 resources: {}
   # limits:
   #   cpu: 500m

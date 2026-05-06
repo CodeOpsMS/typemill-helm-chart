@@ -16,7 +16,11 @@
         },
         "pullPolicy": {
           "type": "string",
-          "enum": ["Always", "IfNotPresent", "Never"],
+          "enum": [
+            "Always",
+            "IfNotPresent",
+            "Never"
+          ],
           "description": "Image pull policy"
         },
         "tag": {
@@ -24,7 +28,10 @@
           "description": "Image tag override (default: Chart appVersion)"
         }
       },
-      "required": ["repository", "pullPolicy"]
+      "required": [
+        "repository",
+        "pullPolicy"
+      ]
     },
     "imagePullSecrets": {
       "type": "array",
@@ -80,7 +87,12 @@
       "properties": {
         "type": {
           "type": "string",
-          "enum": ["ClusterIP", "NodePort", "LoadBalancer", "ExternalName"],
+          "enum": [
+            "ClusterIP",
+            "NodePort",
+            "LoadBalancer",
+            "ExternalName"
+          ],
           "description": "Service type"
         },
         "port": {
@@ -125,7 +137,11 @@
                     },
                     "pathType": {
                       "type": "string",
-                      "enum": ["ImplementationSpecific", "Exact", "Prefix"]
+                      "enum": [
+                        "ImplementationSpecific",
+                        "Exact",
+                        "Prefix"
+                      ]
                     }
                   }
                 }
@@ -192,7 +208,10 @@
       "properties": {
         "type": {
           "type": "string",
-          "enum": ["Recreate", "RollingUpdate"],
+          "enum": [
+            "Recreate",
+            "RollingUpdate"
+          ],
           "description": "Deployment strategy type"
         }
       }
@@ -215,7 +234,11 @@
         },
         "accessMode": {
           "type": "string",
-          "enum": ["ReadWriteOnce", "ReadWriteMany", "ReadOnlyMany"],
+          "enum": [
+            "ReadWriteOnce",
+            "ReadWriteMany",
+            "ReadOnlyMany"
+          ],
           "description": "PVC access mode"
         },
         "size": {
@@ -231,35 +254,80 @@
     "livenessProbe": {
       "type": "object",
       "properties": {
-        "enabled": { "type": "boolean" },
-        "path": { "type": "string" },
-        "initialDelaySeconds": { "type": "integer", "minimum": 0 },
-        "periodSeconds": { "type": "integer", "minimum": 1 },
-        "timeoutSeconds": { "type": "integer", "minimum": 1 },
-        "failureThreshold": { "type": "integer", "minimum": 1 }
+        "enabled": {
+          "type": "boolean"
+        },
+        "path": {
+          "type": "string"
+        },
+        "initialDelaySeconds": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "periodSeconds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "timeoutSeconds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "failureThreshold": {
+          "type": "integer",
+          "minimum": 1
+        }
       },
       "description": "Liveness probe configuration"
     },
     "readinessProbe": {
       "type": "object",
       "properties": {
-        "enabled": { "type": "boolean" },
-        "path": { "type": "string" },
-        "initialDelaySeconds": { "type": "integer", "minimum": 0 },
-        "periodSeconds": { "type": "integer", "minimum": 1 },
-        "timeoutSeconds": { "type": "integer", "minimum": 1 },
-        "failureThreshold": { "type": "integer", "minimum": 1 }
+        "enabled": {
+          "type": "boolean"
+        },
+        "path": {
+          "type": "string"
+        },
+        "initialDelaySeconds": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "periodSeconds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "timeoutSeconds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "failureThreshold": {
+          "type": "integer",
+          "minimum": 1
+        }
       },
       "description": "Readiness probe configuration"
     },
     "startupProbe": {
       "type": "object",
       "properties": {
-        "enabled": { "type": "boolean" },
-        "path": { "type": "string" },
-        "failureThreshold": { "type": "integer", "minimum": 1 },
-        "periodSeconds": { "type": "integer", "minimum": 1 },
-        "timeoutSeconds": { "type": "integer", "minimum": 1 }
+        "enabled": {
+          "type": "boolean"
+        },
+        "path": {
+          "type": "string"
+        },
+        "failureThreshold": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "periodSeconds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "timeoutSeconds": {
+          "type": "integer",
+          "minimum": 1
+        }
       },
       "description": "Startup probe configuration"
     },
@@ -288,6 +356,114 @@
         "themes": {
           "type": "object",
           "description": "Theme installation is done via the Typemill admin UI. Persist the themes/ directory via PVC."
+        }
+      }
+    },
+    "ai": {
+      "type": "object",
+      "description": "Optional Typemill AI configuration bootstrap",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable initial AI configuration bootstrap"
+        },
+        "service": {
+          "type": "string",
+          "enum": [
+            "chatgpt",
+            "claude"
+          ],
+          "description": "AI service to configure"
+        },
+        "existingSecret": {
+          "type": "string",
+          "description": "Existing Secret with provider API keys"
+        },
+        "secretKeys": {
+          "type": "object",
+          "properties": {
+            "chatgptKey": {
+              "type": "string",
+              "description": "Secret key name for the OpenAI/ChatGPT API key"
+            },
+            "claudeKey": {
+              "type": "string",
+              "description": "Secret key name for the Anthropic/Claude API key"
+            }
+          }
+        },
+        "chatgptModel": {
+          "type": "string",
+          "description": "ChatGPT/OpenAI model configured in Typemill"
+        },
+        "claudeModel": {
+          "type": "string",
+          "description": "Claude model configured in Typemill"
+        },
+        "temperature": {
+          "type": "string",
+          "enum": [
+            "0.1",
+            "0.2",
+            "0.3",
+            "0.4",
+            "0.5",
+            "0.6",
+            "0.7",
+            "0.8",
+            "0.9",
+            "1.0"
+          ],
+          "description": "Typemill AI temperature setting"
+        },
+        "outputTokens": {
+          "type": "integer",
+          "enum": [
+            2000,
+            4000,
+            6000,
+            8000,
+            10000,
+            12000
+          ],
+          "description": "Typemill maximum output tokens"
+        },
+        "initContainer": {
+          "type": "object",
+          "properties": {
+            "image": {
+              "type": "object",
+              "properties": {
+                "repository": {
+                  "type": "string"
+                },
+                "tag": {
+                  "type": "string"
+                },
+                "pullPolicy": {
+                  "type": "string",
+                  "enum": [
+                    "Always",
+                    "IfNotPresent",
+                    "Never"
+                  ]
+                }
+              },
+              "required": [
+                "repository",
+                "tag",
+                "pullPolicy"
+              ]
+            },
+            "resources": {
+              "type": "object",
+              "description": "Init container resources"
+            },
+            "securityContext": {
+              "type": "object",
+              "description": "Security context for the AI bootstrap init container"
+            }
+          }
         }
       }
     }

@@ -1,3 +1,12 @@
+{{- if and .Values.ai.enabled (not .Values.persistence.enabled) }}
+{{- fail "ai.enabled requires persistence.enabled because Typemill stores AI settings under /var/www/html/settings" }}
+{{- end }}
+{{- if and .Values.ai.enabled (not .Values.ai.existingSecret) }}
+{{- fail "ai.enabled requires ai.existingSecret with the configured provider API key" }}
+{{- end }}
+{{- if and .Values.ai.enabled (not (or (eq .Values.ai.service "chatgpt") (eq .Values.ai.service "claude"))) }}
+{{- fail "ai.service must be either 'chatgpt' or 'claude'" }}
+{{- end }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -43,6 +52,68 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+      {{- if .Values.ai.enabled }}
+      initContainers:
+        - name: ai-config
+          image: "{{ .Values.ai.initContainer.image.repository }}:{{ .Values.ai.initContainer.image.tag }}"
+          imagePullPolicy: {{ .Values.ai.initContainer.image.pullPolicy }}
+          command:
+            - sh
+            - -ec
+            - |
+              mkdir -p /work/settings
+              touch /work/settings/settings.yaml /work/settings/secrets.yaml
+              yq eval -i '.aiservice = strenv(TYPEMILL_AI_SERVICE) |
+                .aitemperature = strenv(TYPEMILL_AI_TEMPERATURE) |
+                .aioutputtoken = strenv(TYPEMILL_AI_OUTPUT_TOKENS)' /work/settings/settings.yaml
+              case "$TYPEMILL_AI_SERVICE" in
+                chatgpt)
+                  yq eval -i '.chatgptModel = strenv(TYPEMILL_CHATGPT_MODEL)' /work/settings/settings.yaml
+                  yq eval -i '.chatgptKey = strenv(TYPEMILL_CHATGPT_KEY)' /work/settings/secrets.yaml
+                  ;;
+                claude)
+                  yq eval -i '.claudeModel = strenv(TYPEMILL_CLAUDE_MODEL)' /work/settings/settings.yaml
+                  yq eval -i '.claudeKey = strenv(TYPEMILL_CLAUDE_KEY)' /work/settings/secrets.yaml
+                  ;;
+              esac
+          env:
+            - name: TYPEMILL_AI_SERVICE
+              value: {{ .Values.ai.service | quote }}
+            - name: TYPEMILL_CHATGPT_MODEL
+              value: {{ .Values.ai.chatgptModel | quote }}
+            - name: TYPEMILL_CLAUDE_MODEL
+              value: {{ .Values.ai.claudeModel | quote }}
+            - name: TYPEMILL_AI_TEMPERATURE
+              value: {{ .Values.ai.temperature | quote }}
+            - name: TYPEMILL_AI_OUTPUT_TOKENS
+              value: {{ .Values.ai.outputTokens | quote }}
+            {{- if eq .Values.ai.service "chatgpt" }}
+            - name: TYPEMILL_CHATGPT_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.ai.existingSecret | quote }}
+                  key: {{ .Values.ai.secretKeys.chatgptKey | quote }}
+            {{- end }}
+            {{- if eq .Values.ai.service "claude" }}
+            - name: TYPEMILL_CLAUDE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.ai.existingSecret | quote }}
+                  key: {{ .Values.ai.secretKeys.claudeKey | quote }}
+            {{- end }}
+          {{- with .Values.ai.initContainer.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.ai.initContainer.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: typemill-data
+              mountPath: /work/settings
+              subPath: settings
+      {{- end }}
       containers:
         - name: {{ .Chart.Name }}
           {{- with .Values.securityContext }}

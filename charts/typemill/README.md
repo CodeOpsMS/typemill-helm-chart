@@ -118,6 +118,24 @@ The following table lists the configurable parameters of the Typemill chart and 
 | `ingress.hosts` | Ingress hosts configuration | see values.yaml |
 | `ingress.tls` | Ingress TLS configuration | `[]` |
 
+### AI Configuration
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `ai.enabled` | Enable initial Typemill AI configuration bootstrap | `false` |
+| `ai.service` | AI service to configure (`chatgpt` or `claude`) | `chatgpt` |
+| `ai.existingSecret` | Existing Secret containing provider API keys | `""` |
+| `ai.secretKeys.chatgptKey` | Secret key name for OpenAI/ChatGPT API key | `chatgptKey` |
+| `ai.secretKeys.claudeKey` | Secret key name for Anthropic/Claude API key | `claudeKey` |
+| `ai.chatgptModel` | ChatGPT/OpenAI model configured in Typemill | `gpt-4.1` |
+| `ai.claudeModel` | Claude model configured in Typemill | `claude-sonnet-4-5` |
+| `ai.temperature` | Typemill AI temperature setting | `"0.7"` |
+| `ai.outputTokens` | Typemill maximum output tokens | `4000` |
+| `ai.initContainer.image.repository` | yq image used for YAML bootstrap | `mikefarah/yq` |
+| `ai.initContainer.image.tag` | yq image tag | `4.49.2` |
+| `ai.initContainer.securityContext` | Init container security context | `{}` |
+| `ai.initContainer.resources` | Init container resource requests/limits | `{}` |
+
 ### Resources & Autoscaling
 
 | Parameter | Description | Default |
@@ -204,6 +222,40 @@ persistence:
   enabled: true
   existingClaim: my-existing-pvc
 ```
+
+## Typemill AI Bootstrap
+
+Typemill stores AI configuration in persisted YAML files below `/var/www/html/settings`.
+When `ai.enabled=true`, this chart runs an init container on every pod start before Typemill starts and updates:
+
+- `settings/settings.yaml` with `aiservice`, selected model, temperature, and output-token settings
+- `settings/secrets.yaml` with the selected provider API key from an existing Kubernetes Secret
+
+This requires `persistence.enabled=true` and an existing Secret. API keys should not be stored directly in `values.yaml`.
+
+> **Security note:** Typemill reads provider keys from `settings/secrets.yaml`, so the init container copies the selected API key from the Kubernetes Secret into the persisted PVC. Treat the PVC as secret-bearing storage and include it in your backup/encryption/access-control design.
+
+> **Supply-chain note:** Enabling AI bootstrap pulls an additional `mikefarah/yq` init-container image. You can override `ai.initContainer.image.*`; for high-security environments, pin the image by digest in your own values.
+
+Because the bootstrap runs on every pod start, Helm values remain authoritative for these selected AI settings. Manual changes to the same fields in the Typemill UI may be overwritten on restart while `ai.enabled=true`.
+
+Example for OpenAI/ChatGPT:
+
+```bash
+kubectl create secret generic typemill-ai-secret   --from-literal=chatgptKey='YOUR_OPENAI_API_KEY'
+
+helm upgrade --install my-typemill typemill/typemill   --set ai.enabled=true   --set ai.service=chatgpt   --set ai.existingSecret=typemill-ai-secret   --set ai.chatgptModel=gpt-4.1
+```
+
+Example for Claude:
+
+```bash
+kubectl create secret generic typemill-ai-secret   --from-literal=claudeKey='YOUR_ANTHROPIC_API_KEY'
+
+helm upgrade --install my-typemill typemill/typemill   --set ai.enabled=true   --set ai.service=claude   --set ai.existingSecret=typemill-ai-secret   --set ai.claudeModel=claude-sonnet-4-5
+```
+
+Each Typemill user still has to agree to the selected AI provider in the Kixote AI interface before using the feature.
 
 ## Upgrading
 

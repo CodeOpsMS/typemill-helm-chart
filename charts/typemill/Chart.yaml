@@ -4,7 +4,7 @@ description: >-
   Helm chart for Typemill - a lightweight open-source flat-file CMS
   for creating websites and eBooks from Markdown.
 type: application
-version: 1.0.2
+version: 1.1.0
 appVersion: "v2.22.0"
 kubeVersion: ">=1.19.0-0"
 keywords:
@@ -29,6 +29,8 @@ annotations:
   artifacthub.io/category: integration-delivery
   artifacthub.io/containsSecurityUpdates: "false"
   artifacthub.io/changes: |
+    - kind: added
+      description: Add optional Typemill AI provider configuration bootstrap
     - kind: added
       description: Update Typemill to v2.22.0
   artifacthub.io/images: |
