@@ -34,6 +34,48 @@ jobs:
         with:
           charts_dir: charts
 
+
+      - name: Publish GitHub Pages landing page
+        run: |
+          set -euo pipefail
+          tmpdir="$(mktemp -d)"
+          git fetch origin gh-pages
+          git worktree add "$tmpdir" origin/gh-pages
+          cat > "$tmpdir/index.html" <<'HTML'
+          <!doctype html>
+          <html lang="en">
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <title>Typemill Helm Chart Repository</title>
+            <style>
+              body { font-family: system-ui, sans-serif; max-width: 760px; margin: 3rem auto; padding: 0 1rem; line-height: 1.5; }
+              code { background: #f3f4f6; padding: .15rem .3rem; border-radius: .25rem; }
+            </style>
+          </head>
+          <body>
+            <h1>Typemill Helm Chart Repository</h1>
+            <p>This GitHub Pages site hosts the Helm repository index for the Typemill chart.</p>
+            <h2>Usage</h2>
+            <pre><code>helm repo add typemill https://codeopsms.github.io/typemill-helm-chart/
+          helm repo update
+          helm install my-typemill typemill/typemill</code></pre>
+            <p>Repository index: <a href="index.yaml">index.yaml</a></p>
+            <p>Source: <a href="https://github.com/CodeOpsMS/typemill-helm-chart">CodeOpsMS/typemill-helm-chart</a></p>
+          </body>
+          </html>
+          HTML
+          cd "$tmpdir"
+          git config user.name "$GITHUB_ACTOR"
+          git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
+          if ! git diff --quiet -- index.html; then
+            git add index.html
+            git commit -m "Add GitHub Pages landing page"
+            git push origin HEAD:gh-pages
+          fi
+          cd -
+          git worktree remove "$tmpdir"
+
       - name: Push Helm Chart to GHCR as OCI
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io \

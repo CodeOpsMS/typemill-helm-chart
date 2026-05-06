@@ -59,3 +59,28 @@ Create the name of the service account to use
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
+
+
+{{/*
+Return the Typemill image reference. If image.digest is set, it takes precedence
+over image.tag for immutable image pinning.
+*/}}
+{{- define "typemill.image" -}}
+{{- if .Values.image.digest -}}
+{{- printf "%s@%s" .Values.image.repository .Values.image.digest -}}
+{{- else -}}
+{{- printf "%s:%s" .Values.image.repository (.Values.image.tag | default .Chart.AppVersion) -}}
+{{- end -}}
+{{- end }}
+
+{{/*
+Return the AI bootstrap init-container image reference. If digest is set, it takes
+precedence over tag for immutable image pinning.
+*/}}
+{{- define "typemill.aiInitImage" -}}
+{{- if .Values.ai.initContainer.image.digest -}}
+{{- printf "%s@%s" .Values.ai.initContainer.image.repository .Values.ai.initContainer.image.digest -}}
+{{- else -}}
+{{- printf "%s:%s" .Values.ai.initContainer.image.repository .Values.ai.initContainer.image.tag -}}
+{{- end -}}
+{{- end }}

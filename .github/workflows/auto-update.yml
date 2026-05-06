@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      packages: write
+      pull-requests: write
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -73,60 +73,20 @@ jobs:
           echo "NEW_TAG=$NEW_TAG" >> "$GITHUB_ENV"
           echo "OLD_TAG=$OLD_TAG" >> "$GITHUB_ENV"
 
-      - name: Commit and push
+      - name: Create update pull request
         if: steps.check.outputs.update == 'true'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add charts/typemill/Chart.yaml
-          git commit -m "chore: update Typemill ${OLD_TAG} → ${NEW_TAG} (chart ${NEW_CHART_VERSION})"
-          git push
-
-      - name: Install Helm
-        if: steps.check.outputs.update == 'true'
-        uses: azure/setup-helm@v5
+        uses: peter-evans/create-pull-request@v8
         with:
-          version: latest
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: chore/update-typemill-${{ env.NEW_TAG }}
+          delete-branch: true
+          commit-message: "chore: update Typemill ${{ env.OLD_TAG }} → ${{ env.NEW_TAG }} (chart ${{ env.NEW_CHART_VERSION }})"
+          title: "chore: update Typemill ${{ env.OLD_TAG }} → ${{ env.NEW_TAG }}"
+          body: |
+            Automated Typemill image update detected from Docker Hub.
 
-      - name: Create GitHub Release
-        if: steps.check.outputs.update == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          helm package charts/typemill --destination /tmp
-          gh release create "typemill-${NEW_CHART_VERSION}" \
-            "/tmp/typemill-${NEW_CHART_VERSION}.tgz" \
-            --title "typemill-${NEW_CHART_VERSION}" \
-            --notes "## Typemill Helm Chart ${NEW_CHART_VERSION}
+            - Typemill image: `${{ env.OLD_TAG }}` → `${{ env.NEW_TAG }}`
+            - Chart version: `${{ env.NEW_CHART_VERSION }}`
 
-          Automated update: Typemill Docker image ${OLD_TAG} → ${NEW_TAG}
-
-          ### Changes
-          - Updated \`appVersion\` to \`${NEW_TAG}\`
-          - Updated container image reference to \`kixote/typemill:${NEW_TAG}\`"
-
-      - name: Update GitHub Pages index
-        if: steps.check.outputs.update == 'true'
-        run: |
-          # Checkout gh-pages, add new package, update index
-          git fetch origin gh-pages
-          git checkout gh-pages
-
-          cp "/tmp/typemill-${NEW_CHART_VERSION}.tgz" .
-          helm repo index --url https://codeopsms.github.io/typemill-helm-chart/ --merge index.yaml .
-
-          git add "typemill-${NEW_CHART_VERSION}.tgz" index.yaml
-          git commit -m "Release typemill-${NEW_CHART_VERSION}"
-          git push origin gh-pages
-
-          git checkout main
-
-      - name: Push OCI to GHCR
-        if: steps.check.outputs.update == 'true'
-        run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io \
-            -u ${{ github.actor }} \
-            --password-stdin
-
-          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
-          helm push "/tmp/typemill-${NEW_CHART_VERSION}.tgz" "oci://ghcr.io/${OWNER}/helm-charts"
+            Publishing is intentionally handled only by `release.yml` after this PR is merged.
+          reviewers: CodeOpsMS

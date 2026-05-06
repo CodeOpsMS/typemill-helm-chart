@@ -55,7 +55,7 @@ spec:
       {{- if .Values.ai.enabled }}
       initContainers:
         - name: ai-config
-          image: "{{ .Values.ai.initContainer.image.repository }}:{{ .Values.ai.initContainer.image.tag }}"
+          image: {{ include "typemill.aiInitImage" . | quote }}
           imagePullPolicy: {{ .Values.ai.initContainer.image.pullPolicy }}
           command:
             - sh
@@ -120,7 +120,7 @@ spec:
           securityContext:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          image: {{ include "typemill.image" . | quote }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: http

@@ -77,6 +77,7 @@ The following table lists the configurable parameters of the Typemill chart and 
 | `image.repository` | Container image repository | `kixote/typemill` |
 | `image.pullPolicy` | Image pull policy | `IfNotPresent` |
 | `image.tag` | Image tag (defaults to Chart appVersion) | `""` |
+| `image.digest` | Optional image digest for immutable pinning; overrides tag when set | `""` |
 | `imagePullSecrets` | Image pull secrets | `[]` |
 | `nameOverride` | Override chart name | `""` |
 | `fullnameOverride` | Override full release name | `""` |
@@ -133,6 +134,7 @@ The following table lists the configurable parameters of the Typemill chart and 
 | `ai.outputTokens` | Typemill maximum output tokens | `4000` |
 | `ai.initContainer.image.repository` | yq image used for YAML bootstrap | `mikefarah/yq` |
 | `ai.initContainer.image.tag` | yq image tag | `4.49.2` |
+| `ai.initContainer.image.digest` | Optional yq image digest for immutable pinning; overrides tag when set | `""` |
 | `ai.initContainer.securityContext` | Init container security context | `{}` |
 | `ai.initContainer.resources` | Init container resource requests/limits | `{}` |
 
@@ -154,7 +156,20 @@ The following table lists the configurable parameters of the Typemill chart and 
 | `tolerations` | Tolerations | `[]` |
 | `affinity` | Affinity rules | `{}` |
 
-### Persistence
+#### Image digest pinning
+
+For stronger supply-chain control you can pin the Typemill image by digest. When `image.digest` is set, it takes precedence over `image.tag`:
+
+```yaml
+image:
+  repository: kixote/typemill
+  tag: v2.22.0
+  digest: sha256:...
+```
+
+The AI bootstrap init-container supports the same pattern via `ai.initContainer.image.digest`.
+
+## Persistence
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
@@ -196,6 +211,19 @@ The following table lists the configurable parameters of the Typemill chart and 
 
 > **Note:** Plugin and theme installation is done via the Typemill admin UI at `/tm/plugins`
 > and `/tm/themes`. Ensure the `plugins/` and `themes/` directories are persisted via the PVC.
+
+### Image digest pinning
+
+For stronger supply-chain control you can pin the Typemill image by digest. When `image.digest` is set, it takes precedence over `image.tag`:
+
+```yaml
+image:
+  repository: kixote/typemill
+  tag: v2.22.0
+  digest: sha256:...
+```
+
+The AI bootstrap init-container supports the same pattern via `ai.initContainer.image.digest`.
 
 ## Persistence
 

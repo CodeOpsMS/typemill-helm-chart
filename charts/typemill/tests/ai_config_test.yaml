@@ -186,3 +186,13 @@ tests:
     asserts:
       - failedTemplate:
           errorMessage: "ai.enabled requires ai.existingSecret with the configured provider API key"
+  - it: should render ai init container digest when set
+    set:
+      ai.enabled: true
+      ai.service: chatgpt
+      ai.existingSecret: typemill-ai-secret
+      ai.initContainer.image.digest: sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].image
+          value: mikefarah/yq@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
