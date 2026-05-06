@@ -22,7 +22,7 @@ sources:
 maintainers:
   - name: Manfred Lämmerzahl
     email: maintainer@example.com
-    url: https://www.laemmerzahl.de
+    url: https://github.com/codeopsms
 icon: https://typemill.net/media/live/typemill-hero-1.png
 annotations:
   artifacthub.io/license: MIT
