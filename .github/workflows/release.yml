@@ -39,6 +39,10 @@ jobs:
         run: |
           set -euo pipefail
           tmpdir="$(mktemp -d)"
+          cleanup() {
+            git worktree remove --force "$tmpdir" >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
           git fetch origin gh-pages
           git worktree add "$tmpdir" origin/gh-pages
           cat > "$tmpdir/index.html" <<'HTML'
@@ -74,7 +78,6 @@ jobs:
             git push origin HEAD:gh-pages
           fi
           cd -
-          git worktree remove "$tmpdir"
 
       - name: Push Helm Chart to GHCR as OCI
         run: |
