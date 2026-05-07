@@ -1,0 +1,33 @@
+name: GitHub Pages Helm Repository Healthcheck
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Detect broken Artifact Hub indexing early after the morning auto-update window.
+    - cron: "30 8 * * *"
+
+jobs:
+  check-pages-helm-repo:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check gh-pages branch exists
+        run: |
+          set -euo pipefail
+          git ls-remote --exit-code --heads "https://github.com/${GITHUB_REPOSITORY}.git" gh-pages
+
+      - name: Check published Helm repository index
+        run: |
+          set -euo pipefail
+          repo_owner="${GITHUB_REPOSITORY_OWNER,,}"
+          repo_name="${GITHUB_REPOSITORY#*/}"
+          index_url="https://${repo_owner}.github.io/${repo_name}/index.yaml"
+
+          echo "Checking ${index_url}"
+          curl --fail --silent --show-error --location --retry 3 --retry-delay 10 \
+            --output index.yaml "${index_url}"
+
+          test -s index.yaml
+          grep -q '^apiVersion:' index.yaml
+          grep -q '^entries:' index.yaml
