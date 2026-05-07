@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 jobs:
   release:
@@ -82,7 +83,7 @@ jobs:
       - name: Push Helm Chart to GHCR as OCI
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io \
-            -u ${{ github.actor }} \
+            -u "${{ github.actor }}" \
             --password-stdin
 
           CHART_VERSION=$(grep '^version:' charts/typemill/Chart.yaml | awk '{print $2}')
@@ -90,4 +91,4 @@ jobs:
           helm package charts/typemill --destination /tmp
 
           OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
-          helm push /tmp/typemill-${CHART_VERSION}.tgz oci://ghcr.io/${OWNER}/helm-charts
+          helm push "/tmp/typemill-${CHART_VERSION}.tgz" "oci://ghcr.io/${OWNER}/helm-charts"

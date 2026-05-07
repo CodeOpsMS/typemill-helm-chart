@@ -100,8 +100,15 @@ This repository is fully automated:
 |------|-----|----------|
 | New Typemill Docker image | Auto-update workflow bumps chart version and releases | Every 6 hours |
 | GitHub Actions updates | Dependabot PRs with auto-merge | Weekly |
+| GitHub Pages Helm repository | Healthcheck verifies `gh-pages` and `index.yaml` | Daily |
 
 No manual intervention is required for routine updates.
+
+### GitHub Pages Helm Repository
+
+The classic Helm repository is published from the `gh-pages` branch. Do not delete this branch: Artifact Hub indexes `https://codeopsms.github.io/typemill-helm-chart/index.yaml` from there.
+
+If the branch or the published index is missing, restore `gh-pages` from the last known good commit and run the `Release Helm Charts` workflow manually. Repository admins may also need to re-enable GitHub Pages with source `Deploy from a branch`, branch `gh-pages`, folder `/`.
 
 ## Development
 
