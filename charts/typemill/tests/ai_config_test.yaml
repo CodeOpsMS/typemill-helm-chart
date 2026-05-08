@@ -24,7 +24,7 @@ tests:
           value: ai-config
       - equal:
           path: spec.template.spec.initContainers[0].image
-          value: mikefarah/yq:4.49.2
+          value: mikefarah/yq:4.53.2
       - contains:
           path: spec.template.spec.initContainers[0].env
           content:

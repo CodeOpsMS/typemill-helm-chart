@@ -133,7 +133,7 @@ The following table lists the configurable parameters of the Typemill chart and 
 | `ai.temperature` | Typemill AI temperature setting | `"0.7"` |
 | `ai.outputTokens` | Typemill maximum output tokens | `4000` |
 | `ai.initContainer.image.repository` | yq image used for YAML bootstrap | `mikefarah/yq` |
-| `ai.initContainer.image.tag` | yq image tag | `4.49.2` |
+| `ai.initContainer.image.tag` | yq image tag | `4.53.2` |
 | `ai.initContainer.image.digest` | Optional yq image digest for immutable pinning; overrides tag when set | `""` |
 | `ai.initContainer.securityContext` | Init container security context | `{}` |
 | `ai.initContainer.resources` | Init container resource requests/limits | `{}` |
