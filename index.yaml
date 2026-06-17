@@ -5,6 +5,63 @@ entries:
       artifacthub.io/category: integration-delivery
       artifacthub.io/changes: |
         - kind: changed
+          description: Update Typemill to v2.23.0
+        - kind: added
+          description: Add image digest pinning support
+        - kind: changed
+          description: Make auto-update create pull requests and keep publishing in release workflow
+        - kind: added
+          description: Add chart install testing in CI
+      artifacthub.io/containsSecurityUpdates: "false"
+      artifacthub.io/images: |
+        - name: typemill
+          image: kixote/typemill:v2.23.0
+      artifacthub.io/license: MIT
+      artifacthub.io/links: |
+        - name: Typemill Documentation
+          url: https://docs.typemill.net/
+        - name: Typemill Source
+          url: https://github.com/typemill/typemill
+        - name: Docker Image
+          url: https://hub.docker.com/r/kixote/typemill
+        - name: support
+          url: https://github.com/codeopsms/typemill-helm-chart/issues
+      artifacthub.io/screenshots: |
+        - title: Typemill Editor
+          url: https://typemill.net/media/original/typemill-editor-072025.webp
+    apiVersion: v2
+    appVersion: v2.23.0
+    created: "2026-06-17T11:24:25.813468546Z"
+    description: Helm chart for Typemill - a lightweight open-source flat-file CMS
+      for creating websites and eBooks from Markdown.
+    digest: 8d32c647fa32bc3be12ca96814a8ac9cda432b15921a8b9aacb5b5adb48ddc6e
+    home: https://typemill.net
+    icon: https://typemill.net/media/live/typemill-hero-1.png
+    keywords:
+    - typemill
+    - cms
+    - flat-file
+    - markdown
+    - documentation
+    - ebook
+    - wiki
+    kubeVersion: '>=1.19.0-0'
+    maintainers:
+    - email: maintainer@example.com
+      name: codeopsms
+      url: https://github.com/codeopsms
+    name: typemill
+    sources:
+    - https://github.com/typemill/typemill
+    - https://hub.docker.com/r/kixote/typemill
+    type: application
+    urls:
+    - https://github.com/CodeOpsMS/typemill-helm-chart/releases/download/typemill-1.1.3/typemill-1.1.3.tgz
+    version: 1.1.3
+  - annotations:
+      artifacthub.io/category: integration-delivery
+      artifacthub.io/changes: |
+        - kind: changed
           description: Update yq init container image to 4.53.2
         - kind: added
           description: Add image digest pinning support
@@ -319,4 +376,4 @@ entries:
     urls:
     - https://codeopsms.github.io/typemill-helm-chart/typemill-1.0.0.tgz
     version: 1.0.0
-generated: "2026-05-08T10:59:10.671725898Z"
+generated: "2026-06-17T11:24:25.813494434Z"
