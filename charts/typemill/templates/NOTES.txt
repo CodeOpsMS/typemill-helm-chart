@@ -22,8 +22,10 @@ First-time setup:
 {{- if .Values.ai.enabled }}
 
 AI bootstrap is enabled:
-  Service: {{ .Values.ai.service }}
-  Secret: {{ .Values.ai.existingSecret }}
+  Adapter: {{ .Values.ai.adapter | default "openai" }}
+  Base URL: {{ .Values.ai.baseUrl | default "provider default" }}
+  Model: {{ .Values.ai.model | default "provider default" }}
+  Secret: {{ .Values.ai.existingSecret | default "not configured" }}
 
 Typemill users still need to accept the selected AI provider in the Kixote AI interface.
 {{- end }}

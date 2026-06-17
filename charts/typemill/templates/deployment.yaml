@@ -1,11 +1,55 @@
+{{- $legacyService := .Values.ai.service | default "" -}}
+{{- $aiAdapter := .Values.ai.adapter | default "" -}}
+{{- $legacyValuesActive := false -}}
+{{- if and (eq $legacyService "chatgpt") (or (not $aiAdapter) (eq $aiAdapter "openai")) -}}
+{{- $aiAdapter = "openai" -}}
+{{- $legacyValuesActive = true -}}
+{{- else if and (eq $legacyService "claude") (or (not $aiAdapter) (eq $aiAdapter "openai")) -}}
+{{- $aiAdapter = "anthropic" -}}
+{{- $legacyValuesActive = true -}}
+{{- else if not $aiAdapter -}}
+{{- $aiAdapter = "openai" -}}
+{{- end -}}
+{{- $aiBaseUrl := .Values.ai.baseUrl | default "" -}}
+{{- if not $aiBaseUrl -}}
+{{- if eq $aiAdapter "anthropic" -}}
+{{- $aiBaseUrl = "https://api.anthropic.com/v1" -}}
+{{- else if eq $aiAdapter "openai" -}}
+{{- $aiBaseUrl = "https://api.openai.com/v1" -}}
+{{- end -}}
+{{- end -}}
+{{- $aiModel := .Values.ai.model | default "" -}}
+{{- if not $aiModel -}}
+{{- if and $legacyValuesActive (eq $legacyService "chatgpt") -}}
+{{- $aiModel = .Values.ai.chatgptModel -}}
+{{- else if and $legacyValuesActive (eq $legacyService "claude") -}}
+{{- $aiModel = .Values.ai.claudeModel -}}
+{{- else if eq $aiAdapter "anthropic" -}}
+{{- $aiModel = "claude-sonnet-4-5" -}}
+{{- else if eq $aiAdapter "openai" -}}
+{{- $aiModel = "gpt-4.1" -}}
+{{- end -}}
+{{- end -}}
+{{- $aiProviderName := .Values.ai.providerName | default "" -}}
+{{- if not $aiProviderName -}}
+{{- if eq $aiAdapter "anthropic" -}}
+{{- $aiProviderName = "Anthropic" -}}
+{{- else if eq $aiAdapter "openai" -}}
+{{- $aiProviderName = "OpenAI" -}}
+{{- end -}}
+{{- end -}}
+{{- $aiProviderTerms := .Values.ai.providerTerms | default "" -}}
+{{- $aiSecretKey := .Values.ai.secretKeys.apiKey -}}
+{{- if and $legacyValuesActive (eq $legacyService "chatgpt") -}}
+{{- $aiSecretKey = .Values.ai.secretKeys.chatgptKey -}}
+{{- else if and $legacyValuesActive (eq $legacyService "claude") -}}
+{{- $aiSecretKey = .Values.ai.secretKeys.claudeKey -}}
+{{- end -}}
 {{- if and .Values.ai.enabled (not .Values.persistence.enabled) }}
 {{- fail "ai.enabled requires persistence.enabled because Typemill stores AI settings under /var/www/html/settings" }}
 {{- end }}
-{{- if and .Values.ai.enabled (not .Values.ai.existingSecret) }}
-{{- fail "ai.enabled requires ai.existingSecret with the configured provider API key" }}
-{{- end }}
-{{- if and .Values.ai.enabled (not (or (eq .Values.ai.service "chatgpt") (eq .Values.ai.service "claude"))) }}
-{{- fail "ai.service must be either 'chatgpt' or 'claude'" }}
+{{- if and .Values.ai.enabled (not (or (eq $aiAdapter "openai") (eq $aiAdapter "anthropic") (eq $aiAdapter "none"))) }}
+{{- fail "ai.adapter must be one of 'openai', 'anthropic', or 'none'" }}
 {{- end }}
 apiVersion: apps/v1
 kind: Deployment
@@ -63,43 +107,40 @@ spec:
             - |
               mkdir -p /work/settings
               touch /work/settings/settings.yaml /work/settings/secrets.yaml
-              yq eval -i '.aiservice = strenv(TYPEMILL_AI_SERVICE) |
+              yq eval -i '.ai_adapter = strenv(TYPEMILL_AI_ADAPTER) |
+                .ai_base_url = strenv(TYPEMILL_AI_BASE_URL) |
+                .ai_model = strenv(TYPEMILL_AI_MODEL) |
+                .ai_provider_name = strenv(TYPEMILL_AI_PROVIDER_NAME) |
+                .ai_provider_terms = strenv(TYPEMILL_AI_PROVIDER_TERMS) |
                 .aitemperature = strenv(TYPEMILL_AI_TEMPERATURE) |
                 .aioutputtoken = strenv(TYPEMILL_AI_OUTPUT_TOKENS)' /work/settings/settings.yaml
-              case "$TYPEMILL_AI_SERVICE" in
-                chatgpt)
-                  yq eval -i '.chatgptModel = strenv(TYPEMILL_CHATGPT_MODEL)' /work/settings/settings.yaml
-                  yq eval -i '.chatgptKey = strenv(TYPEMILL_CHATGPT_KEY)' /work/settings/secrets.yaml
-                  ;;
-                claude)
-                  yq eval -i '.claudeModel = strenv(TYPEMILL_CLAUDE_MODEL)' /work/settings/settings.yaml
-                  yq eval -i '.claudeKey = strenv(TYPEMILL_CLAUDE_KEY)' /work/settings/secrets.yaml
-                  ;;
-              esac
+              if [ -n "${TYPEMILL_AI_API_KEY:-}" ]; then
+                yq eval -i '.ai_api_key = strenv(TYPEMILL_AI_API_KEY)' /work/settings/secrets.yaml
+                yq eval -i 'del(.chatgptKey, .claudeKey)' /work/settings/secrets.yaml
+              else
+                yq eval -i 'del(.ai_api_key, .chatgptKey, .claudeKey)' /work/settings/secrets.yaml
+              fi
           env:
-            - name: TYPEMILL_AI_SERVICE
-              value: {{ .Values.ai.service | quote }}
-            - name: TYPEMILL_CHATGPT_MODEL
-              value: {{ .Values.ai.chatgptModel | quote }}
-            - name: TYPEMILL_CLAUDE_MODEL
-              value: {{ .Values.ai.claudeModel | quote }}
+            - name: TYPEMILL_AI_ADAPTER
+              value: {{ $aiAdapter | quote }}
+            - name: TYPEMILL_AI_BASE_URL
+              value: {{ $aiBaseUrl | quote }}
+            - name: TYPEMILL_AI_MODEL
+              value: {{ $aiModel | quote }}
+            - name: TYPEMILL_AI_PROVIDER_NAME
+              value: {{ $aiProviderName | quote }}
+            - name: TYPEMILL_AI_PROVIDER_TERMS
+              value: {{ $aiProviderTerms | quote }}
             - name: TYPEMILL_AI_TEMPERATURE
               value: {{ .Values.ai.temperature | quote }}
             - name: TYPEMILL_AI_OUTPUT_TOKENS
               value: {{ .Values.ai.outputTokens | quote }}
-            {{- if eq .Values.ai.service "chatgpt" }}
-            - name: TYPEMILL_CHATGPT_KEY
+            {{- if and .Values.ai.existingSecret (ne $aiAdapter "none") }}
+            - name: TYPEMILL_AI_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.ai.existingSecret | quote }}
-                  key: {{ .Values.ai.secretKeys.chatgptKey | quote }}
-            {{- end }}
-            {{- if eq .Values.ai.service "claude" }}
-            - name: TYPEMILL_CLAUDE_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.ai.existingSecret | quote }}
-                  key: {{ .Values.ai.secretKeys.claudeKey | quote }}
+                  key: {{ $aiSecretKey | quote }}
             {{- end }}
           {{- with .Values.ai.initContainer.securityContext }}
           securityContext:

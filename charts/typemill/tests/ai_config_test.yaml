@@ -10,12 +10,15 @@ tests:
       - notExists:
           path: spec.template.spec.initContainers
 
-  - it: should render chatgpt ai init container with existing secret
+  - it: should render openai-compatible ai init container with existing secret
     set:
       ai.enabled: true
-      ai.service: chatgpt
+      ai.adapter: openai
+      ai.baseUrl: https://api.openai.com/v1
+      ai.model: gpt-4.1
+      ai.providerName: OpenAI
+      ai.providerTerms: https://openai.com/policies/terms-of-use
       ai.existingSecret: typemill-ai-secret
-      ai.chatgptModel: gpt-4.1
       ai.temperature: "0.6"
       ai.outputTokens: 6000
     asserts:
@@ -24,17 +27,32 @@ tests:
           value: ai-config
       - equal:
           path: spec.template.spec.initContainers[0].image
-          value: mikefarah/yq:4.53.2
+          value: mikefarah/yq:4.53.3
       - contains:
           path: spec.template.spec.initContainers[0].env
           content:
-            name: TYPEMILL_AI_SERVICE
-            value: chatgpt
+            name: TYPEMILL_AI_ADAPTER
+            value: openai
       - contains:
           path: spec.template.spec.initContainers[0].env
           content:
-            name: TYPEMILL_CHATGPT_MODEL
+            name: TYPEMILL_AI_BASE_URL
+            value: https://api.openai.com/v1
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: TYPEMILL_AI_MODEL
             value: gpt-4.1
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: TYPEMILL_AI_PROVIDER_NAME
+            value: OpenAI
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: TYPEMILL_AI_PROVIDER_TERMS
+            value: https://openai.com/policies/terms-of-use
       - contains:
           path: spec.template.spec.initContainers[0].env
           content:
@@ -46,11 +64,11 @@ tests:
             name: TYPEMILL_AI_OUTPUT_TOKENS
             value: "6000"
       - equal:
-          path: spec.template.spec.initContainers[0].env[5].valueFrom.secretKeyRef.name
+          path: spec.template.spec.initContainers[0].env[7].valueFrom.secretKeyRef.name
           value: typemill-ai-secret
       - equal:
-          path: spec.template.spec.initContainers[0].env[5].valueFrom.secretKeyRef.key
-          value: chatgptKey
+          path: spec.template.spec.initContainers[0].env[7].valueFrom.secretKeyRef.key
+          value: aiApiKey
       - contains:
           path: spec.template.spec.initContainers[0].volumeMounts
           content:
@@ -58,10 +76,60 @@ tests:
             mountPath: /work/settings
             subPath: settings
 
+  - it: should render local openai-compatible provider without secret
+    set:
+      ai.enabled: true
+      ai.adapter: openai
+      ai.baseUrl: http://ollama.default.svc.cluster.local:11434/v1
+      ai.model: llama3
+      ai.providerName: Ollama
+      ai.providerTerms: ""
+    asserts:
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: TYPEMILL_AI_BASE_URL
+            value: http://ollama.default.svc.cluster.local:11434/v1
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: TYPEMILL_AI_MODEL
+            value: llama3
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: TYPEMILL_AI_PROVIDER_TERMS
+            value: ""
+      - notContains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: TYPEMILL_AI_API_KEY
+
+  - it: should render provider defaults when optional ai fields are empty
+    set:
+      ai.enabled: true
+      ai.adapter: openai
+    asserts:
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: TYPEMILL_AI_BASE_URL
+            value: https://api.openai.com/v1
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: TYPEMILL_AI_MODEL
+            value: gpt-4.1
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: TYPEMILL_AI_PROVIDER_NAME
+            value: OpenAI
+
   - it: should not expose provider api keys to the typemill application container
     set:
       ai.enabled: true
-      ai.service: chatgpt
+      ai.adapter: openai
       ai.existingSecret: typemill-ai-secret
     asserts:
       - lengthEqual:
@@ -75,23 +143,23 @@ tests:
       - notContains:
           path: spec.template.spec.containers[0].env
           content:
-            name: TYPEMILL_CHATGPT_KEY
+            name: TYPEMILL_AI_API_KEY
 
-  - it: should render custom chatgpt secret key
+  - it: should render custom api secret key
     set:
       ai.enabled: true
-      ai.service: chatgpt
+      ai.adapter: openai
       ai.existingSecret: typemill-ai-secret
-      ai.secretKeys.chatgptKey: openai-api-key
+      ai.secretKeys.apiKey: openai-api-key
     asserts:
       - equal:
-          path: spec.template.spec.initContainers[0].env[5].valueFrom.secretKeyRef.key
+          path: spec.template.spec.initContainers[0].env[7].valueFrom.secretKeyRef.key
           value: openai-api-key
 
   - it: should render custom yq image and pull policy
     set:
       ai.enabled: true
-      ai.service: chatgpt
+      ai.adapter: openai
       ai.existingSecret: typemill-ai-secret
       ai.initContainer.image.repository: ghcr.io/example/yq
       ai.initContainer.image.tag: 4.49.2@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
@@ -107,7 +175,7 @@ tests:
   - it: should render ai init container resources
     set:
       ai.enabled: true
-      ai.service: chatgpt
+      ai.adapter: openai
       ai.existingSecret: typemill-ai-secret
       ai.initContainer.resources:
         requests:
@@ -129,7 +197,7 @@ tests:
   - it: should render ai init container security context
     set:
       ai.enabled: true
-      ai.service: chatgpt
+      ai.adapter: openai
       ai.existingSecret: typemill-ai-secret
       ai.initContainer.securityContext:
         runAsUser: 33
@@ -142,54 +210,116 @@ tests:
           path: spec.template.spec.initContainers[0].securityContext.runAsGroup
           value: 33
 
-  - it: should render claude ai init container with custom secret key
+  - it: should render anthropic ai init container with custom secret key
     set:
       ai.enabled: true
-      ai.service: claude
+      ai.adapter: anthropic
+      ai.baseUrl: https://api.anthropic.com/v1
+      ai.model: claude-sonnet-4-5
+      ai.providerName: Anthropic
+      ai.providerTerms: https://www.anthropic.com/legal/consumer-terms
       ai.existingSecret: typemill-ai-secret
-      ai.secretKeys.claudeKey: anthropic-api-key
-      ai.claudeModel: claude-sonnet-4-5
+      ai.secretKeys.apiKey: anthropic-api-key
     asserts:
       - contains:
           path: spec.template.spec.initContainers[0].env
           content:
-            name: TYPEMILL_AI_SERVICE
-            value: claude
+            name: TYPEMILL_AI_ADAPTER
+            value: anthropic
       - contains:
           path: spec.template.spec.initContainers[0].env
           content:
-            name: TYPEMILL_CLAUDE_MODEL
+            name: TYPEMILL_AI_MODEL
             value: claude-sonnet-4-5
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: TYPEMILL_AI_PROVIDER_NAME
+            value: Anthropic
+      - equal:
+          path: spec.template.spec.initContainers[0].env[7].valueFrom.secretKeyRef.name
+          value: typemill-ai-secret
+      - equal:
+          path: spec.template.spec.initContainers[0].env[7].valueFrom.secretKeyRef.key
+          value: anthropic-api-key
+
+  - it: should not inject api key when adapter is none
+    set:
+      ai.enabled: true
+      ai.adapter: none
+      ai.existingSecret: typemill-ai-secret
+    asserts:
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: TYPEMILL_AI_ADAPTER
+            value: none
       - notContains:
           path: spec.template.spec.initContainers[0].env
           content:
-            name: TYPEMILL_CHATGPT_KEY
+            name: TYPEMILL_AI_API_KEY
+
+  - it: should map legacy claude ai values to anthropic adapter
+    set:
+      ai.enabled: true
+      ai.service: claude
+      ai.existingSecret: typemill-ai-secret
+      ai.secretKeys.claudeKey: legacy-anthropic-key
+      ai.claudeModel: claude-legacy-model
+    asserts:
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: TYPEMILL_AI_ADAPTER
+            value: anthropic
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: TYPEMILL_AI_BASE_URL
+            value: https://api.anthropic.com/v1
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: TYPEMILL_AI_MODEL
+            value: claude-legacy-model
       - equal:
-          path: spec.template.spec.initContainers[0].env[5].valueFrom.secretKeyRef.name
-          value: typemill-ai-secret
+          path: spec.template.spec.initContainers[0].env[7].valueFrom.secretKeyRef.key
+          value: legacy-anthropic-key
+
+  - it: should prefer explicit new adapter over conflicting legacy service
+    set:
+      ai.enabled: true
+      ai.adapter: anthropic
+      ai.service: chatgpt
+      ai.existingSecret: typemill-ai-secret
+      ai.secretKeys.chatgptKey: legacy-openai-key
+    asserts:
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: TYPEMILL_AI_ADAPTER
+            value: anthropic
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: TYPEMILL_AI_MODEL
+            value: claude-sonnet-4-5
       - equal:
-          path: spec.template.spec.initContainers[0].env[5].valueFrom.secretKeyRef.key
-          value: anthropic-api-key
+          path: spec.template.spec.initContainers[0].env[7].valueFrom.secretKeyRef.key
+          value: aiApiKey
 
   - it: should fail when ai is enabled without persistence
     set:
       ai.enabled: true
-      ai.existingSecret: typemill-ai-secret
       persistence.enabled: false
     asserts:
       - failedTemplate:
           errorMessage: "ai.enabled requires persistence.enabled because Typemill stores AI settings under /var/www/html/settings"
 
-  - it: should fail when ai is enabled without existing secret
-    set:
-      ai.enabled: true
-    asserts:
-      - failedTemplate:
-          errorMessage: "ai.enabled requires ai.existingSecret with the configured provider API key"
   - it: should render ai init container digest when set
     set:
       ai.enabled: true
-      ai.service: chatgpt
+      ai.adapter: openai
       ai.existingSecret: typemill-ai-secret
       ai.initContainer.image.digest: sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
     asserts:

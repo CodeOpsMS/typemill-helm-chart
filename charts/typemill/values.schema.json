@@ -371,38 +371,68 @@
           "type": "boolean",
           "description": "Enable initial AI configuration bootstrap"
         },
-        "service": {
+        "adapter": {
           "type": "string",
           "enum": [
-            "chatgpt",
-            "claude"
+            "openai",
+            "anthropic",
+            "none"
           ],
-          "description": "AI service to configure"
+          "description": "AI adapter to configure"
+        },
+        "baseUrl": {
+          "type": "string",
+          "description": "AI provider base URL. Defaults to the adapter cloud endpoint when empty."
+        },
+        "model": {
+          "type": "string",
+          "description": "AI model name. Defaults to a provider-specific model when empty."
+        },
+        "providerName": {
+          "type": "string",
+          "description": "Human-readable AI provider name"
+        },
+        "providerTerms": {
+          "type": "string",
+          "description": "AI provider terms URL"
         },
         "existingSecret": {
           "type": "string",
-          "description": "Existing Secret with provider API keys"
+          "description": "Existing Secret with provider API key"
         },
         "secretKeys": {
           "type": "object",
           "properties": {
+            "apiKey": {
+              "type": "string",
+              "description": "Secret key name for the provider API key"
+            },
             "chatgptKey": {
               "type": "string",
-              "description": "Secret key name for the OpenAI/ChatGPT API key"
+              "description": "Deprecated legacy secret key name for the OpenAI/ChatGPT API key"
             },
             "claudeKey": {
               "type": "string",
-              "description": "Secret key name for the Anthropic/Claude API key"
+              "description": "Deprecated legacy secret key name for the Anthropic/Claude API key"
             }
           }
         },
+        "service": {
+          "type": "string",
+          "enum": [
+            "",
+            "chatgpt",
+            "claude"
+          ],
+          "description": "Deprecated legacy AI service value. Use ai.adapter instead."
+        },
         "chatgptModel": {
           "type": "string",
-          "description": "ChatGPT/OpenAI model configured in Typemill"
+          "description": "Deprecated legacy ChatGPT/OpenAI model value. Use ai.model instead."
         },
         "claudeModel": {
           "type": "string",
-          "description": "Claude model configured in Typemill"
+          "description": "Deprecated legacy Claude model value. Use ai.model instead."
         },
         "temperature": {
           "type": "string",

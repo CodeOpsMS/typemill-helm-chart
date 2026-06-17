@@ -72,18 +72,31 @@ ai:
   # This writes/updates AI provider settings in the persisted Typemill settings files
   # on every pod start before the application container starts.
   enabled: false
-  # -- AI service to configure. Supported by Typemill: chatgpt, claude.
-  service: chatgpt
-  # -- Existing Kubernetes Secret containing provider API keys.
+  # -- AI adapter to configure. Supported by Typemill: openai, anthropic, none.
+  # Use openai for OpenAI-compatible APIs such as OpenAI, Ollama, LM Studio, LocalAI, vLLM, and OpenRouter.
+  adapter: openai
+  # -- AI provider base URL. Do not add a trailing slash. Defaults to the adapter's cloud endpoint when empty.
+  baseUrl: ""
+  # -- AI model name as expected by the configured provider. Defaults to a provider-specific model when empty.
+  model: ""
+  # -- Optional human-readable provider name shown to Typemill users.
+  providerName: ""
+  # -- Optional provider terms URL shown to Typemill users.
+  providerTerms: ""
+  # -- Existing Kubernetes Secret containing the provider API key. Optional for local providers without authentication.
   existingSecret: ""
   secretKeys:
-    # -- Secret key name for the OpenAI/ChatGPT API key.
+    # -- Secret key name for the provider API key.
+    apiKey: aiApiKey
+    # -- Deprecated: legacy secret key name for the OpenAI/ChatGPT API key.
     chatgptKey: chatgptKey
-    # -- Secret key name for the Anthropic/Claude API key.
+    # -- Deprecated: legacy secret key name for the Anthropic/Claude API key.
     claudeKey: claudeKey
-  # -- ChatGPT/OpenAI model configured in Typemill when service=chatgpt.
+  # -- Deprecated: legacy AI service value. Use ai.adapter instead.
+  service: ""
+  # -- Deprecated: legacy ChatGPT/OpenAI model value. Use ai.model instead.
   chatgptModel: gpt-4.1
-  # -- Claude model configured in Typemill when service=claude.
+  # -- Deprecated: legacy Claude model value. Use ai.model instead.
   claudeModel: claude-sonnet-4-5
   # -- Typemill AI temperature setting as string to match Typemill form values.
   temperature: "0.7"

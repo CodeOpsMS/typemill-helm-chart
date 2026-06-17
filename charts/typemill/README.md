@@ -124,16 +124,22 @@ The following table lists the configurable parameters of the Typemill chart and 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
 | `ai.enabled` | Enable initial Typemill AI configuration bootstrap | `false` |
-| `ai.service` | AI service to configure (`chatgpt` or `claude`) | `chatgpt` |
-| `ai.existingSecret` | Existing Secret containing provider API keys | `""` |
-| `ai.secretKeys.chatgptKey` | Secret key name for OpenAI/ChatGPT API key | `chatgptKey` |
-| `ai.secretKeys.claudeKey` | Secret key name for Anthropic/Claude API key | `claudeKey` |
-| `ai.chatgptModel` | ChatGPT/OpenAI model configured in Typemill | `gpt-4.1` |
-| `ai.claudeModel` | Claude model configured in Typemill | `claude-sonnet-4-5` |
+| `ai.adapter` | AI adapter to configure (`openai`, `anthropic`, or `none`) | `openai` |
+| `ai.baseUrl` | AI provider base URL; defaults to the adapter cloud endpoint when empty | `""` |
+| `ai.model` | AI model name as expected by the provider; defaults to a provider-specific model when empty | `""` |
+| `ai.providerName` | Provider name shown to Typemill users | `""` |
+| `ai.providerTerms` | Provider terms URL shown to Typemill users; stays empty when unset | `""` |
+| `ai.existingSecret` | Existing Secret containing the provider API key; optional for local providers | `""` |
+| `ai.secretKeys.apiKey` | Secret key name for provider API key | `aiApiKey` |
+| `ai.secretKeys.chatgptKey` | Deprecated legacy secret key name for OpenAI/ChatGPT API key | `chatgptKey` |
+| `ai.secretKeys.claudeKey` | Deprecated legacy secret key name for Anthropic/Claude API key | `claudeKey` |
+| `ai.service` | Deprecated legacy AI service value; use `ai.adapter` instead | `""` |
+| `ai.chatgptModel` | Deprecated legacy ChatGPT/OpenAI model value; use `ai.model` instead | `gpt-4.1` |
+| `ai.claudeModel` | Deprecated legacy Claude model value; use `ai.model` instead | `claude-sonnet-4-5` |
 | `ai.temperature` | Typemill AI temperature setting | `"0.7"` |
 | `ai.outputTokens` | Typemill maximum output tokens | `4000` |
 | `ai.initContainer.image.repository` | yq image used for YAML bootstrap | `mikefarah/yq` |
-| `ai.initContainer.image.tag` | yq image tag | `4.53.2` |
+| `ai.initContainer.image.tag` | yq image tag | `4.53.3` |
 | `ai.initContainer.image.digest` | Optional yq image digest for immutable pinning; overrides tag when set | `""` |
 | `ai.initContainer.securityContext` | Init container security context | `{}` |
 | `ai.initContainer.resources` | Init container resource requests/limits | `{}` |
@@ -163,7 +169,7 @@ For stronger supply-chain control you can pin the Typemill image by digest. When
 ```yaml
 image:
   repository: kixote/typemill
-  tag: v2.22.0
+  tag: v2.23.1
   digest: sha256:...
 ```
 
@@ -219,7 +225,7 @@ For stronger supply-chain control you can pin the Typemill image by digest. When
 ```yaml
 image:
   repository: kixote/typemill
-  tag: v2.22.0
+  tag: v2.23.1
   digest: sha256:...
 ```
 
@@ -256,31 +262,60 @@ persistence:
 Typemill stores AI configuration in persisted YAML files below `/var/www/html/settings`.
 When `ai.enabled=true`, this chart runs an init container on every pod start before Typemill starts and updates:
 
-- `settings/settings.yaml` with `aiservice`, selected model, temperature, and output-token settings
-- `settings/secrets.yaml` with the selected provider API key from an existing Kubernetes Secret
+- `settings/settings.yaml` with `ai_adapter`, `ai_base_url`, `ai_model`, optional provider display metadata, temperature, and output-token settings
+- `settings/secrets.yaml` with `ai_api_key` from an existing Kubernetes Secret when `ai.existingSecret` is set
 
-This requires `persistence.enabled=true` and an existing Secret. API keys should not be stored directly in `values.yaml`.
+This requires `persistence.enabled=true`. API keys should not be stored directly in `values.yaml`; use `ai.existingSecret` when the provider requires a key. For local OpenAI-compatible providers such as Ollama or LM Studio, the Secret can be omitted.
 
 > **Security note:** Typemill reads provider keys from `settings/secrets.yaml`, so the init container copies the selected API key from the Kubernetes Secret into the persisted PVC. Treat the PVC as secret-bearing storage and include it in your backup/encryption/access-control design.
+> If `ai.existingSecret` is omitted or `ai.adapter=none`, the bootstrap removes `ai_api_key` and legacy `chatgptKey`/`claudeKey` entries from `settings/secrets.yaml`.
 
 > **Supply-chain note:** Enabling AI bootstrap pulls an additional `mikefarah/yq` init-container image. You can override `ai.initContainer.image.*`; for high-security environments, pin the image by digest in your own values.
 
 Because the bootstrap runs on every pod start, Helm values remain authoritative for these selected AI settings. Manual changes to the same fields in the Typemill UI may be overwritten on restart while `ai.enabled=true`.
 
-Example for OpenAI/ChatGPT:
+Legacy `ai.service`, `ai.chatgptModel`, `ai.claudeModel`, `ai.secretKeys.chatgptKey`, and `ai.secretKeys.claudeKey` values from chart versions before Typemill 2.23 are still accepted for upgrade compatibility. Prefer the new `ai.adapter`, `ai.baseUrl`, `ai.model`, and `ai.secretKeys.apiKey` values for new deployments.
+
+Example for OpenAI:
 
 ```bash
-kubectl create secret generic typemill-ai-secret   --from-literal=chatgptKey='YOUR_OPENAI_API_KEY'
+kubectl create secret generic typemill-ai-secret \
+  --from-literal=aiApiKey='YOUR_OPENAI_API_KEY'
 
-helm upgrade --install my-typemill typemill/typemill   --set ai.enabled=true   --set ai.service=chatgpt   --set ai.existingSecret=typemill-ai-secret   --set ai.chatgptModel=gpt-4.1
+helm upgrade --install my-typemill typemill/typemill \
+  --set ai.enabled=true \
+  --set ai.adapter=openai \
+  --set ai.baseUrl=https://api.openai.com/v1 \
+  --set ai.model=gpt-4.1 \
+  --set ai.existingSecret=typemill-ai-secret
 ```
 
 Example for Claude:
 
 ```bash
-kubectl create secret generic typemill-ai-secret   --from-literal=claudeKey='YOUR_ANTHROPIC_API_KEY'
+kubectl create secret generic typemill-ai-secret \
+  --from-literal=aiApiKey='YOUR_ANTHROPIC_API_KEY'
 
-helm upgrade --install my-typemill typemill/typemill   --set ai.enabled=true   --set ai.service=claude   --set ai.existingSecret=typemill-ai-secret   --set ai.claudeModel=claude-sonnet-4-5
+helm upgrade --install my-typemill typemill/typemill \
+  --set ai.enabled=true \
+  --set ai.adapter=anthropic \
+  --set ai.baseUrl=https://api.anthropic.com/v1 \
+  --set ai.model=claude-sonnet-4-5 \
+  --set ai.providerName=Anthropic \
+  --set ai.providerTerms=https://www.anthropic.com/legal/consumer-terms \
+  --set ai.existingSecret=typemill-ai-secret
+```
+
+Example for Ollama without an API key:
+
+```bash
+helm upgrade --install my-typemill typemill/typemill \
+  --set ai.enabled=true \
+  --set ai.adapter=openai \
+  --set ai.baseUrl=http://ollama.default.svc.cluster.local:11434/v1 \
+  --set ai.model=llama3 \
+  --set ai.providerName=Ollama \
+  --set ai.providerTerms=
 ```
 
 Each Typemill user still has to agree to the selected AI provider in the Kixote AI interface before using the feature.
@@ -294,7 +329,7 @@ When upgrading, the chart uses `strategy: Recreate` by default. This means:
 This ensures no two pods try to access the PVC simultaneously with `ReadWriteOnce` access mode.
 
 ```bash
-helm upgrade my-typemill typemill/typemill --set image.tag=v2.22.0
+helm upgrade my-typemill typemill/typemill --set image.tag=v2.23.1
 ```
 
 ## Uninstalling
