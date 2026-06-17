@@ -4,8 +4,8 @@ description: >-
   Helm chart for Typemill - a lightweight open-source flat-file CMS
   for creating websites and eBooks from Markdown.
 type: application
-version: 1.1.2
-appVersion: "v2.22.0"
+version: 1.1.3
+appVersion: "v2.23.0"
 kubeVersion: ">=1.19.0-0"
 keywords:
   - typemill
@@ -30,7 +30,7 @@ annotations:
   artifacthub.io/containsSecurityUpdates: "false"
   artifacthub.io/changes: |
     - kind: changed
-      description: Update yq init container image to 4.53.2
+      description: Update Typemill to v2.23.0
     - kind: added
       description: Add image digest pinning support
     - kind: changed
@@ -39,7 +39,7 @@ annotations:
       description: Add chart install testing in CI
   artifacthub.io/images: |
     - name: typemill
-      image: kixote/typemill:v2.22.0
+      image: kixote/typemill:v2.23.0
   artifacthub.io/links: |
     - name: Typemill Documentation
       url: https://docs.typemill.net/
