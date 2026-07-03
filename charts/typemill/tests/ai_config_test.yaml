@@ -28,6 +28,12 @@ tests:
       - equal:
           path: spec.template.spec.initContainers[0].image
           value: mikefarah/yq:4.53.3
+      - equal:
+          path: spec.template.spec.initContainers[0].securityContext.runAsUser
+          value: 0
+      - equal:
+          path: spec.template.spec.initContainers[0].securityContext.runAsGroup
+          value: 0
       - contains:
           path: spec.template.spec.initContainers[0].env
           content:

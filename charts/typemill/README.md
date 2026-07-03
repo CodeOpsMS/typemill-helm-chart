@@ -141,7 +141,7 @@ The following table lists the configurable parameters of the Typemill chart and 
 | `ai.initContainer.image.repository` | yq image used for YAML bootstrap | `mikefarah/yq` |
 | `ai.initContainer.image.tag` | yq image tag | `4.53.3` |
 | `ai.initContainer.image.digest` | Optional yq image digest for immutable pinning; overrides tag when set | `""` |
-| `ai.initContainer.securityContext` | Init container security context | `{}` |
+| `ai.initContainer.securityContext` | Init container security context | `{"runAsGroup":0,"runAsUser":0}` |
 | `ai.initContainer.resources` | Init container resource requests/limits | `{}` |
 
 ### Resources & Autoscaling
@@ -271,6 +271,8 @@ This requires `persistence.enabled=true`. API keys should not be stored directly
 > If `ai.existingSecret` is omitted or `ai.adapter=none`, the bootstrap removes `ai_api_key` and legacy `chatgptKey`/`claudeKey` entries from `settings/secrets.yaml`.
 
 > **Supply-chain note:** Enabling AI bootstrap pulls an additional `mikefarah/yq` init-container image. You can override `ai.initContainer.image.*`; for high-security environments, pin the image by digest in your own values.
+
+> **Security context note:** The bootstrap init-container defaults to `runAsUser: 0` and `runAsGroup: 0` because many dynamically provisioned PVC subPath directories are root-owned on first mount. Override `ai.initContainer.securityContext` only if your storage class or pod security policy guarantees write access for another user.
 
 Because the bootstrap runs on every pod start, Helm values remain authoritative for these selected AI settings. Manual changes to the same fields in the Typemill UI may be overwritten on restart while `ai.enabled=true`.
 
