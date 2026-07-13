@@ -10,6 +10,7 @@ jobs:
   check-update:
     runs-on: ubuntu-latest
     permissions:
+      actions: write
       contents: write
       pull-requests: write
     steps:
@@ -22,6 +23,17 @@ jobs:
           # Get current appVersion from Chart.yaml
           CURRENT_VERSION=$(grep '^appVersion:' charts/typemill/Chart.yaml | awk '{print $2}' | tr -d '"')
           echo "Current appVersion: $CURRENT_VERSION"
+
+          CURRENT_DIGEST=$(awk '
+            /^image:/ { in_image=1; next }
+            in_image && /^  digest:/ { gsub(/"/, "", $2); print $2; exit }
+            in_image && /^[^ ]/ { exit }
+          ' charts/typemill/values.yaml)
+          echo "Current image digest: $CURRENT_DIGEST"
+          if ! [[ "$CURRENT_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "The current default image digest is missing or invalid: ${CURRENT_DIGEST}"
+            exit 1
+          fi
 
           # Query Docker Hub for all tags, filter for stable vX.Y.Z releases
           LATEST_TAG=$(curl -s "https://hub.docker.com/v2/repositories/kixote/typemill/tags/?page_size=100&ordering=last_updated" \
@@ -37,14 +49,25 @@ jobs:
             exit 0
           fi
 
-          if [ "$CURRENT_VERSION" = "$LATEST_TAG" ]; then
+          TAG_METADATA=$(curl --fail --silent --show-error --location --retry 3 \
+            "https://hub.docker.com/v2/repositories/kixote/typemill/tags/${LATEST_TAG}")
+          LATEST_DIGEST=$(jq -r '.digest // empty' <<< "$TAG_METADATA")
+          if ! [[ "$LATEST_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "Docker Hub returned an invalid digest for ${LATEST_TAG}: ${LATEST_DIGEST}"
+            exit 1
+          fi
+          echo "Latest Docker Hub digest: $LATEST_DIGEST"
+
+          if [ "$CURRENT_VERSION" = "$LATEST_TAG" ] && [ "$CURRENT_DIGEST" = "$LATEST_DIGEST" ]; then
             echo "Already up to date"
             echo "update=false" >> "$GITHUB_OUTPUT"
           else
-            echo "New version available: $CURRENT_VERSION → $LATEST_TAG"
+            echo "Update available: $CURRENT_VERSION@$CURRENT_DIGEST → $LATEST_TAG@$LATEST_DIGEST"
             echo "update=true" >> "$GITHUB_OUTPUT"
             echo "new_tag=$LATEST_TAG" >> "$GITHUB_OUTPUT"
             echo "old_tag=$CURRENT_VERSION" >> "$GITHUB_OUTPUT"
+            echo "new_digest=$LATEST_DIGEST" >> "$GITHUB_OUTPUT"
+            echo "old_digest=$CURRENT_DIGEST" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Bump chart version and update appVersion
@@ -52,6 +75,8 @@ jobs:
         run: |
           NEW_TAG="${{ steps.check.outputs.new_tag }}"
           OLD_TAG="${{ steps.check.outputs.old_tag }}"
+          NEW_DIGEST="${{ steps.check.outputs.new_digest }}"
+          OLD_DIGEST="${{ steps.check.outputs.old_digest }}"
 
           # Bump chart patch version
           CURRENT_CHART_VERSION=$(grep '^version:' charts/typemill/Chart.yaml | awk '{print $2}')
@@ -63,17 +88,46 @@ jobs:
           sed -i "s/^version: .*/version: ${NEW_CHART_VERSION}/" charts/typemill/Chart.yaml
           sed -i "s/^appVersion: .*/appVersion: \"${NEW_TAG}\"/" charts/typemill/Chart.yaml
 
+          # Keep the default deployment immutable and in sync with appVersion.
+          sed -i "0,/^  digest: .*/s//  digest: \"${NEW_DIGEST}\"/" charts/typemill/values.yaml
+
           # Update image annotation in Chart.yaml
           sed -i "s|image: kixote/typemill:.*|image: kixote/typemill:${NEW_TAG}|" charts/typemill/Chart.yaml
 
-          # Update changes annotation
-          sed -i "/artifacthub.io\/changes/,/description:/{s/description: .*/description: Update Typemill to ${NEW_TAG}/}" charts/typemill/Chart.yaml
+          # Keep release-specific documentation and the default-image unit test
+          # in sync with the values and chart metadata.
+          for DOC_FILE in README.md charts/typemill/README.md; do
+            sed -i "s/${OLD_TAG}/${NEW_TAG}/g" "$DOC_FILE"
+          done
+          sed -i "s/${OLD_DIGEST}/${NEW_DIGEST}/g" charts/typemill/tests/deployment_test.yaml
+
+          # Security metadata belongs to a specific upstream release. Automated
+          # image bumps start neutral and can be marked explicitly during review.
+          sed -i 's/artifacthub.io\/containsSecurityUpdates: "true"/artifacthub.io\/containsSecurityUpdates: "false"/' charts/typemill/Chart.yaml
+
+          # Replace release-specific Artifact Hub changes so stale hardening notes
+          # are not repeated in every automated image update.
+          awk -v tag="$NEW_TAG" '
+            /^  artifacthub.io\/changes: \|/ {
+              print
+              print "    - kind: changed"
+              print "      description: Update Typemill to " tag
+              skipping=1
+              next
+            }
+            skipping && /^  artifacthub.io\/images: \|/ { skipping=0 }
+            !skipping { print }
+          ' charts/typemill/Chart.yaml > charts/typemill/Chart.yaml.tmp
+          mv charts/typemill/Chart.yaml.tmp charts/typemill/Chart.yaml
 
           echo "NEW_CHART_VERSION=$NEW_CHART_VERSION" >> "$GITHUB_ENV"
           echo "NEW_TAG=$NEW_TAG" >> "$GITHUB_ENV"
           echo "OLD_TAG=$OLD_TAG" >> "$GITHUB_ENV"
+          echo "NEW_DIGEST=$NEW_DIGEST" >> "$GITHUB_ENV"
+          echo "OLD_DIGEST=$OLD_DIGEST" >> "$GITHUB_ENV"
 
       - name: Create update pull request
+        id: create-pull-request
         if: steps.check.outputs.update == 'true'
         uses: peter-evans/create-pull-request@v8
         with:
@@ -86,7 +140,30 @@ jobs:
             Automated Typemill image update detected from Docker Hub.
 
             - Typemill image: `${{ env.OLD_TAG }}` → `${{ env.NEW_TAG }}`
+            - Image digest: `${{ env.OLD_DIGEST }}` → `${{ env.NEW_DIGEST }}`
             - Chart version: `${{ env.NEW_CHART_VERSION }}`
 
             Publishing is intentionally handled only by `release.yml` after this PR is merged.
           reviewers: CodeOpsMS
+
+      - name: Verify update pull request was created
+        if: steps.check.outputs.update == 'true'
+        env:
+          PR_NUMBER: ${{ steps.create-pull-request.outputs.pull-request-number }}
+          PR_URL: ${{ steps.create-pull-request.outputs.pull-request-url }}
+        run: |
+          if [ -z "$PR_NUMBER" ] || [ -z "$PR_URL" ]; then
+            echo "The update branch was created, but no pull request was returned."
+            echo "Verify that GitHub Actions may create pull requests in the repository settings."
+            exit 1
+          fi
+          echo "Created pull request #${PR_NUMBER}: ${PR_URL}"
+
+      # Pull requests created with GITHUB_TOKEN do not emit another pull_request
+      # event. Dispatch validation explicitly so automated updates still run CI.
+      - name: Dispatch chart validation
+        if: steps.check.outputs.update == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          UPDATE_BRANCH: chore/update-typemill-${{ env.NEW_TAG }}
+        run: gh workflow run lint-test.yml --ref "$UPDATE_BRANCH"

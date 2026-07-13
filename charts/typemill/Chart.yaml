@@ -4,7 +4,7 @@ description: >-
   Helm chart for Typemill - a lightweight open-source flat-file CMS
   for creating websites and eBooks from Markdown.
 type: application
-version: 1.1.5
+version: 2.0.0
 appVersion: "v2.24.2"
 kubeVersion: ">=1.19.0-0"
 keywords:
@@ -29,10 +29,14 @@ annotations:
   artifacthub.io/category: integration-delivery
   artifacthub.io/containsSecurityUpdates: "true"
   artifacthub.io/changes: |
+    - kind: security
+      description: Update Typemill to v2.24.2 with path traversal, password reset, 2FA, and user security fixes
     - kind: changed
-      description: Update Typemill to v2.24.2
+      description: Pin the default Typemill image to its verified manifest digest
     - kind: changed
-      description: Update AI bootstrap for Typemill 2.23 generic AI adapters
+      description: Retain chart-managed PVCs by default and reject unsupported multi-replica deployments
+    - kind: changed
+      description: Harden the Helm connectivity test and strengthen values validation
   artifacthub.io/images: |
     - name: typemill
       image: kixote/typemill:v2.24.2

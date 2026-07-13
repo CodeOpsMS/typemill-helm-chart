@@ -84,3 +84,32 @@ precedence over tag for immutable image pinning.
 {{- printf "%s:%s" .Values.ai.initContainer.image.repository .Values.ai.initContainer.image.tag -}}
 {{- end -}}
 {{- end }}
+
+{{/*
+Return the Helm test image reference. If tests.image.digest is set, it takes
+precedence over the tag for immutable image pinning.
+*/}}
+{{- define "typemill.testImage" -}}
+{{- $tests := .Values.tests | default dict -}}
+{{- $image := $tests.image | default dict -}}
+{{- $repository := $image.repository | default "busybox" -}}
+{{- $digest := $image.digest | default "" -}}
+{{- if $digest -}}
+{{- printf "%s@%s" $repository $digest -}}
+{{- else -}}
+{{- printf "%s:%s" $repository ($image.tag | default "1.37.0") -}}
+{{- end -}}
+{{- end }}
+
+{{/*
+Typemill stores mutable state in flat files and does not support multiple pods
+writing the same data. Reject configurations that could corrupt or diverge it.
+*/}}
+{{- define "typemill.validateScaling" -}}
+{{- if ne (int .Values.replicaCount) 1 -}}
+{{- fail "replicaCount must be 1 because Typemill uses mutable flat-file state and does not support multiple replicas" -}}
+{{- end -}}
+{{- if .Values.autoscaling.enabled -}}
+{{- fail "autoscaling.enabled is unsupported because Typemill uses mutable flat-file state and must run as a single replica" -}}
+{{- end -}}
+{{- end }}

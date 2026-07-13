@@ -6,7 +6,8 @@
 
 > **This Helm chart is a custom helm chart packaged by Lämmerzahl GmbH.**
 > There is no official support from Typemill itself.
-> Fully automated — when a new Typemill Docker image is released, a new chart version is published automatically.
+> New Typemill images are detected automatically and proposed in a pull request.
+> Publishing starts only after the reviewed pull request is merged.
 
 ## About Typemill
 
@@ -26,6 +27,8 @@ Use it for handbooks, documentations, manuals, web-novels, traditional websites,
 | **License** | MIT |
 | **Source** | [GitHub](https://github.com/CodeOpsMS/typemill-helm-chart) |
 | **OCI Registry** | `ghcr.io/codeopsms/helm-charts/typemill` |
+
+The upstream `kixote/typemill` image for Typemill v2.24.2 currently supports Linux/amd64.
 
 ## Prerequisites
 
@@ -65,6 +68,7 @@ persistence:
   enabled: true
   storageClass: "longhorn"
   size: 5Gi
+  retain: true
 
 typemill:
   timezone: "Europe/Berlin"
@@ -94,15 +98,16 @@ If deploying behind a proxy with TLS, edit `settings/settings.yaml` and change `
 
 ## Automation
 
-This repository is fully automated:
+This repository automates discovery, validation, and publishing while retaining a review gate:
 
 | What | How | Interval |
 |------|-----|----------|
-| New Typemill Docker image | Auto-update workflow bumps chart version and releases | Every 6 hours |
-| GitHub Actions updates | Dependabot PRs with auto-merge | Weekly |
+| New Typemill Docker image | Auto-update workflow opens a version-and-digest PR | Every 6 hours |
+| GitHub Actions updates | Dependabot PRs; eligible minor/patch updates auto-merge | Weekly |
 | GitHub Pages Helm repository | Healthcheck verifies `gh-pages` and `index.yaml` | Daily |
 
-No manual intervention is required for routine updates.
+Chart releases are published from `main` after the update PR has passed CI and has been merged.
+The repository setting that allows GitHub Actions to create pull requests must remain enabled.
 
 ### GitHub Pages Helm Repository
 
@@ -118,12 +123,14 @@ If the branch or the published index is missing, restore `gh-pages` from the las
 helm lint charts/typemill --strict
 ```
 
-### Unit Tests (100 tests, 10 suites)
+### Unit Tests
 
 ```bash
 helm plugin install https://github.com/helm-unittest/helm-unittest
 helm unittest charts/typemill
 ```
+
+CI validates the chart with pinned Helm 3 and Helm 4 versions.
 
 ### Template Rendering
 

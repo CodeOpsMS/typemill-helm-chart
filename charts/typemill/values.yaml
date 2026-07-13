@@ -8,8 +8,9 @@ image:
   pullPolicy: IfNotPresent
   # -- Overrides the image tag (default: Chart appVersion)
   tag: ""
-  # -- Optional image digest for immutable pinning. If set, this overrides the tag.
-  digest: ""
+  # -- Image digest for immutable pinning. If set, this overrides the tag.
+  # To use image.tag, explicitly set this to an empty string.
+  digest: "sha256:9fea8cb2bcfaeb903ad3f976b25051636b09a3fe42e7fee04e6f5b255b6361cf"
 
 # -- Image pull secrets for private registries
 imagePullSecrets: []
@@ -127,7 +128,7 @@ resources: {}
   #   memory: 128Mi
 
 autoscaling:
-  # -- Enable Horizontal Pod Autoscaler
+  # -- Deprecated and unsupported for Typemill's shared flat-file state. Must remain false.
   enabled: false
   # -- Minimum number of replicas
   minReplicas: 1
@@ -162,6 +163,10 @@ persistence:
   size: 5Gi
   # -- Use an existing PVC instead of creating a new one
   existingClaim: ""
+  # -- Retain chart-managed PVCs when the Helm release is uninstalled
+  retain: true
+  # -- Additional annotations for chart-managed PVCs
+  annotations: {}
 
 livenessProbe:
   # -- Enable liveness probe
@@ -221,3 +226,24 @@ typemill:
   # Plugin and theme installation is done via the Typemill admin UI
   # at /tm/plugins and /tm/themes. Ensure the plugins/ and themes/
   # directories are persisted via the PVC.
+
+tests:
+  # -- Enable the Helm connectivity test pod
+  enabled: true
+  image:
+    # -- Container image repository for the Helm connectivity test
+    repository: busybox
+    # -- Container image tag for the Helm connectivity test
+    tag: "1.37.0"
+    # -- Immutable multi-platform digest for the Helm connectivity test image
+    digest: "sha256:9532d8c39891ca2ecde4d30d7710e01fb739c87a8b9299685c63704296b16028"
+    # -- Image pull policy for the Helm connectivity test
+    pullPolicy: IfNotPresent
+  # -- Resource requests and limits for the Helm connectivity test
+  resources:
+    requests:
+      cpu: 10m
+      memory: 16Mi
+    limits:
+      cpu: 100m
+      memory: 32Mi

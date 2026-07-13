@@ -8,6 +8,7 @@ tests:
   - it: should render deployment with correct image
     set:
       image.tag: v2.21.2
+      image.digest: ""
     asserts:
       - isKind:
           of: Deployment
@@ -15,26 +16,25 @@ tests:
           path: spec.template.spec.containers[0].image
           value: kixote/typemill:v2.21.2
 
-  - it: should use chart appVersion as default tag
+  - it: should use the pinned default image digest
     asserts:
-      - matchRegex:
+      - equal:
           path: spec.template.spec.containers[0].image
-          pattern: "kixote/typemill:.*"
+          value: kixote/typemill@sha256:9fea8cb2bcfaeb903ad3f976b25051636b09a3fe42e7fee04e6f5b255b6361cf
 
-  - it: should have correct replica count
+  - it: should reject multiple replicas
     set:
       replicaCount: 3
     asserts:
-      - equal:
-          path: spec.replicas
-          value: 3
+      - failedTemplate:
+          errorMessage: "replicaCount must be 1 because Typemill uses mutable flat-file state and does not support multiple replicas"
 
-  - it: should not set replicas when autoscaling is enabled
+  - it: should reject autoscaling
     set:
       autoscaling.enabled: true
     asserts:
-      - notExists:
-          path: spec.replicas
+      - failedTemplate:
+          errorMessage: "autoscaling.enabled is unsupported because Typemill uses mutable flat-file state and must run as a single replica"
 
   - it: should use Recreate strategy by default
     asserts:
@@ -85,6 +85,19 @@ tests:
             name: typemill-data
             mountPath: /var/www/html/settings
             subPath: settings
+
+  - it: should omit volume fields when no volume source is configured
+    set:
+      persistence.enabled: false
+      typemill.phpIniConfig: null
+      typemill.htaccess: ""
+    asserts:
+      - notExists:
+          path: spec.template.spec.containers[0].volumeMounts
+      - notExists:
+          path: spec.template.spec.volumes
+      - notExists:
+          path: spec.template.metadata.annotations
 
   - it: should have liveness probe when enabled
     set:
