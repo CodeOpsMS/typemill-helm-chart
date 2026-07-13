@@ -18,6 +18,9 @@ tests:
       - equal:
           path: spec.resources.requests.storage
           value: 5Gi
+      - equal:
+          path: metadata.annotations["helm.sh/resource-policy"]
+          value: keep
 
   - it: should not create PVC when persistence is disabled
     set:
@@ -98,3 +101,28 @@ tests:
       - equal:
           path: metadata.name
           value: test-release-typemill
+
+  - it: should omit retention annotation when disabled
+    set:
+      persistence.enabled: true
+      persistence.existingClaim: ""
+      persistence.retain: false
+      persistence.annotations:
+        helm.sh/resource-policy: keep
+    asserts:
+      - notExists:
+          path: metadata.annotations["helm.sh/resource-policy"]
+
+  - it: should render custom annotations
+    set:
+      persistence.enabled: true
+      persistence.existingClaim: ""
+      persistence.annotations:
+        example.com/backup: "true"
+    asserts:
+      - equal:
+          path: metadata.annotations["example.com/backup"]
+          value: "true"
+      - equal:
+          path: metadata.annotations["helm.sh/resource-policy"]
+          value: keep

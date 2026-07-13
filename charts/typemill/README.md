@@ -1,6 +1,6 @@
 # Typemill Helm Chart
 
-[![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/typemill)](https://artifacthub.io/packages/search?repo=typemill)
+[![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/typemill-helm-chart)](https://artifacthub.io/packages/helm/typemill-helm-chart/typemill)
 
 A Helm chart for deploying [Typemill](https://typemill.net/) on Kubernetes — a lightweight
 open-source flat-file CMS for creating websites and eBooks from Markdown.
@@ -16,6 +16,7 @@ Docker image.
 
 - Kubernetes >= 1.19
 - Helm >= 3.8
+- Linux/amd64 nodes for the upstream Typemill v2.24.2 image
 - (Optional) An Ingress controller for external access
 - (Optional) A StorageClass for persistent storage
 
@@ -73,11 +74,11 @@ The following table lists the configurable parameters of the Typemill chart and 
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
-| `replicaCount` | Number of replicas | `1` |
+| `replicaCount` | Number of replicas; Typemill supports exactly one | `1` |
 | `image.repository` | Container image repository | `kixote/typemill` |
 | `image.pullPolicy` | Image pull policy | `IfNotPresent` |
 | `image.tag` | Image tag (defaults to Chart appVersion) | `""` |
-| `image.digest` | Optional image digest for immutable pinning; overrides tag when set | `""` |
+| `image.digest` | Immutable image digest; overrides tag when set | pinned; see `values.yaml` |
 | `imagePullSecrets` | Image pull secrets | `[]` |
 | `nameOverride` | Override chart name | `""` |
 | `fullnameOverride` | Override full release name | `""` |
@@ -100,13 +101,13 @@ The following table lists the configurable parameters of the Typemill chart and 
 | `podSecurityContext` | Pod security context | `{}` |
 | `securityContext` | Container security context | `{}` |
 | `terminationGracePeriodSeconds` | Termination grace period | `60` |
-| `strategy.type` | Deployment strategy | `Recreate` |
+| `strategy.type` | Deployment strategy; only `Recreate` is supported | `Recreate` |
 
 ### Service
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
-| `service.type` | Service type | `ClusterIP` |
+| `service.type` | Service type (`ClusterIP`, `NodePort`, or `LoadBalancer`) | `ClusterIP` |
 | `service.port` | Service port | `80` |
 
 ### Ingress
@@ -149,7 +150,7 @@ The following table lists the configurable parameters of the Typemill chart and 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
 | `resources` | CPU/Memory resource requests/limits | `{}` |
-| `autoscaling.enabled` | Enable HPA | `false` |
+| `autoscaling.enabled` | Deprecated and unsupported; must remain disabled | `false` |
 | `autoscaling.minReplicas` | Minimum replicas | `1` |
 | `autoscaling.maxReplicas` | Maximum replicas | `10` |
 | `autoscaling.targetCPUUtilizationPercentage` | Target CPU utilization | `80` |
@@ -164,13 +165,13 @@ The following table lists the configurable parameters of the Typemill chart and 
 
 #### Image digest pinning
 
-For stronger supply-chain control you can pin the Typemill image by digest. When `image.digest` is set, it takes precedence over `image.tag`:
+The default Typemill image is pinned to the verified v2.24.2 manifest digest. When `image.digest` is set, it takes precedence over `image.tag`. To use a custom tag, clear the digest explicitly:
 
 ```yaml
 image:
   repository: kixote/typemill
-  tag: v2.23.1
-  digest: sha256:...
+  tag: v2.24.2
+  digest: ""
 ```
 
 The AI bootstrap init-container supports the same pattern via `ai.initContainer.image.digest`.
@@ -181,9 +182,11 @@ The AI bootstrap init-container supports the same pattern via `ai.initContainer.
 |-----------|-------------|---------|
 | `persistence.enabled` | Enable persistence | `true` |
 | `persistence.storageClass` | Storage class | `""` |
-| `persistence.accessMode` | PVC access mode | `ReadWriteOnce` |
+| `persistence.accessMode` | Writable PVC access mode (`ReadWriteOnce` or `ReadWriteMany`) | `ReadWriteOnce` |
 | `persistence.size` | PVC size | `5Gi` |
 | `persistence.existingClaim` | Use existing PVC | `""` |
+| `persistence.retain` | Retain a chart-managed PVC after Helm uninstall | `true` |
+| `persistence.annotations` | Additional chart-managed PVC annotations | `{}` |
 
 ### Health Checks
 
@@ -207,6 +210,23 @@ The AI bootstrap init-container supports the same pattern via `ai.initContainer.
 | `startupProbe.periodSeconds` | Check interval during startup | `5` |
 | `startupProbe.timeoutSeconds` | Timeout per check | `3` |
 
+### Helm Test
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `tests.enabled` | Enable the hardened Helm connectivity test | `true` |
+| `tests.image.repository` | Connectivity test image repository | `busybox` |
+| `tests.image.tag` | Connectivity test image tag | `1.37.0` |
+| `tests.image.digest` | Immutable connectivity test image digest | `sha256:9532d8...` |
+| `tests.image.pullPolicy` | Connectivity test pull policy | `IfNotPresent` |
+| `tests.resources` | Connectivity test resource requests and limits | see values.yaml |
+
+Run the test after installation or upgrade:
+
+```bash
+helm test my-typemill --logs
+```
+
 ### Typemill Configuration
 
 | Parameter | Description | Default |
@@ -218,20 +238,7 @@ The AI bootstrap init-container supports the same pattern via `ai.initContainer.
 > **Note:** Plugin and theme installation is done via the Typemill admin UI at `/tm/plugins`
 > and `/tm/themes`. Ensure the `plugins/` and `themes/` directories are persisted via the PVC.
 
-### Image digest pinning
-
-For stronger supply-chain control you can pin the Typemill image by digest. When `image.digest` is set, it takes precedence over `image.tag`:
-
-```yaml
-image:
-  repository: kixote/typemill
-  tag: v2.23.1
-  digest: sha256:...
-```
-
-The AI bootstrap init-container supports the same pattern via `ai.initContainer.image.digest`.
-
-## Persistence
+### Persistent directories and lifecycle
 
 Typemill stores all data as flat files. The chart creates a single PVC with subPath mounts
 for the following directories:
@@ -246,8 +253,14 @@ for the following directories:
 | `content/` | Markdown content files |
 | `themes/` | Installed themes |
 
-When using `ReadWriteOnce` access mode (default), the deployment strategy must be `Recreate`
-to avoid multiple pods trying to mount the same volume. This is the default configuration.
+Typemill uses mutable flat-file state and is supported only with one replica and the
+`Recreate` deployment strategy. The chart rejects multiple replicas, autoscaling,
+`RollingUpdate`, read-only persistence, and `ExternalName` Services.
+
+Chart-managed PVCs are annotated with `helm.sh/resource-policy: keep` by default, so
+`helm uninstall` does not delete site data. Set `persistence.retain=false` only when
+automatic PVC deletion on uninstall is explicitly desired. Existing claims are never
+created or deleted by this chart.
 
 To use an existing PVC:
 
@@ -320,9 +333,19 @@ helm upgrade --install my-typemill typemill/typemill \
   --set ai.providerTerms=
 ```
 
+When Typemill and Ollama run in the same Kubernetes cluster, use Ollama's internal
+Service DNS name. Ollama does not need a public Ingress for this integration.
+
 Each Typemill user still has to agree to the selected AI provider in the Kixote AI interface before using the feature.
 
 ## Upgrading
+
+Chart 2.0.0 is a major chart release because it makes previously unsafe or
+unsupported configurations explicit: Typemill is restricted to one replica,
+autoscaling is rejected, the deployment strategy is fixed to `Recreate`, and
+the default application image is pinned by digest. Review custom values before
+upgrading, especially `replicaCount`, `autoscaling`, `strategy`, `service.type`,
+`persistence.accessMode`, and `image.*`.
 
 When upgrading, the chart uses `strategy: Recreate` by default. This means:
 1. The old pod is terminated
@@ -331,7 +354,16 @@ When upgrading, the chart uses `strategy: Recreate` by default. This means:
 This ensures no two pods try to access the PVC simultaneously with `ReadWriteOnce` access mode.
 
 ```bash
-helm upgrade my-typemill typemill/typemill --set image.tag=v2.23.1
+helm repo update
+helm upgrade my-typemill typemill/typemill
+```
+
+When overriding the application with a mutable tag, clear the default digest as well:
+
+```bash
+helm upgrade my-typemill typemill/typemill \
+  --set image.tag=v2.24.2 \
+  --set image.digest=
 ```
 
 ## Uninstalling
@@ -340,10 +372,11 @@ helm upgrade my-typemill typemill/typemill --set image.tag=v2.23.1
 helm uninstall my-typemill
 ```
 
-> **Note:** PersistentVolumeClaims are not deleted automatically. To remove all data:
+> **Note:** With the default `persistence.retain=true`, chart-managed PersistentVolumeClaims
+> remain after uninstall. To remove all data intentionally:
 >
 > ```bash
-> kubectl delete pvc my-typemill-typemill
+> kubectl delete pvc my-typemill
 > ```
 
 ## License

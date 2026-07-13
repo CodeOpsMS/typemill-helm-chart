@@ -1,10 +1,22 @@
 {{- if and .Values.persistence.enabled (not .Values.persistence.existingClaim) }}
+{{- $pvcAnnotations := dict }}
+{{- range $key, $value := .Values.persistence.annotations }}
+{{- $_ := set $pvcAnnotations $key $value }}
+{{- end }}
+{{- $_ := unset $pvcAnnotations "helm.sh/resource-policy" }}
+{{- if .Values.persistence.retain }}
+{{- $_ := set $pvcAnnotations "helm.sh/resource-policy" "keep" }}
+{{- end }}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: {{ include "typemill.fullname" . }}
   labels:
     {{- include "typemill.labels" . | nindent 4 }}
+  {{- with $pvcAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
   accessModes:
     - {{ .Values.persistence.accessMode }}

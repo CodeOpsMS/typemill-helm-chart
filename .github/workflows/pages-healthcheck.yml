@@ -12,6 +12,11 @@ jobs:
     permissions:
       contents: read
     steps:
+      - name: Set up Helm
+        uses: azure/setup-helm@v5
+        with:
+          version: v4.2.3
+
       - name: Check gh-pages branch exists
         run: |
           set -euo pipefail
@@ -31,3 +36,29 @@ jobs:
           test -s index.yaml
           grep -q '^apiVersion:' index.yaml
           grep -q '^entries:' index.yaml
+
+          helm repo add typemill "https://${repo_owner}.github.io/${repo_name}/"
+          published_version=$(helm search repo typemill/typemill --versions --output json \
+            | jq -r '.[0].version // empty')
+
+          release_json=$(curl --fail --silent --show-error --location --retry 3 \
+            -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/latest")
+          latest_tag=$(jq -r '.tag_name // empty' <<< "$release_json")
+          latest_version=${latest_tag#typemill-}
+          asset_url=$(jq -r --arg name "typemill-${latest_version}.tgz" \
+            '.assets[] | select(.name == $name) | .browser_download_url' <<< "$release_json")
+
+          if [ -z "$published_version" ] || [ "$published_version" != "$latest_version" ]; then
+            echo "Published index is stale: index=${published_version:-missing}, release=${latest_version:-missing}"
+            exit 1
+          fi
+          if [ -z "$asset_url" ]; then
+            echo "Release asset typemill-${latest_version}.tgz is missing"
+            exit 1
+          fi
+          curl --fail --silent --show-error --location --retry 3 \
+            --output /dev/null "$asset_url"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

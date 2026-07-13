@@ -1,0 +1,86 @@
+suite: Helm connectivity test
+templates:
+  - templates/tests/test-connection.yaml
+release:
+  name: test-release
+  namespace: test-ns
+tests:
+  - it: should render a hardened connectivity test by default
+    asserts:
+      - isKind:
+          of: Pod
+      - equal:
+          path: spec.automountServiceAccountToken
+          value: false
+      - equal:
+          path: spec.securityContext.runAsNonRoot
+          value: true
+      - equal:
+          path: spec.securityContext.seccompProfile.type
+          value: RuntimeDefault
+      - equal:
+          path: spec.containers[0].image
+          value: busybox@sha256:9532d8c39891ca2ecde4d30d7710e01fb739c87a8b9299685c63704296b16028
+      - equal:
+          path: spec.containers[0].securityContext.allowPrivilegeEscalation
+          value: false
+      - equal:
+          path: spec.containers[0].securityContext.readOnlyRootFilesystem
+          value: true
+      - contains:
+          path: spec.containers[0].securityContext.capabilities.drop
+          content: ALL
+
+  - it: should not render when tests are disabled
+    set:
+      tests.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should tolerate a missing tests block during reuse-values upgrades
+    set:
+      tests: null
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should support a custom test image tag
+    set:
+      tests.image.repository: registry.example.com/tools/busybox
+      tests.image.tag: "1.37.1"
+      tests.image.digest: ""
+      tests.image.pullPolicy: Always
+    asserts:
+      - equal:
+          path: spec.containers[0].image
+          value: registry.example.com/tools/busybox:1.37.1
+      - equal:
+          path: spec.containers[0].imagePullPolicy
+          value: Always
+
+  - it: should use configured image pull secrets
+    set:
+      imagePullSecrets:
+        - name: private-registry
+    asserts:
+      - equal:
+          path: spec.imagePullSecrets[0].name
+          value: private-registry
+
+  - it: should test the configured readiness endpoint
+    set:
+      readinessProbe.path: /tm/setup
+    asserts:
+      - contains:
+          path: spec.containers[0].args
+          content: http://test-release-typemill:80/tm/setup
+
+  - it: should render test resources
+    asserts:
+      - equal:
+          path: spec.containers[0].resources.requests.cpu
+          value: 10m
+      - equal:
+          path: spec.containers[0].resources.limits.memory
+          value: 32Mi

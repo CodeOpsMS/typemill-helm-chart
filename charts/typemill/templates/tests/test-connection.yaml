@@ -1,3 +1,6 @@
+{{- $tests := .Values.tests | default dict -}}
+{{- $testImage := $tests.image | default dict -}}
+{{- if ($tests.enabled | default false) }}
 apiVersion: v1
 kind: Pod
 metadata:
@@ -8,9 +11,44 @@ metadata:
     "helm.sh/hook": test
     "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
 spec:
+  automountServiceAccountToken: false
+  {{- with .Values.imagePullSecrets }}
+  imagePullSecrets:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65534
+    runAsGroup: 65534
+    seccompProfile:
+      type: RuntimeDefault
   containers:
     - name: wget
-      image: busybox
-      command: ['wget']
-      args: ['--spider', '--timeout=10', 'http://{{ include "typemill.fullname" . }}:{{ .Values.service.port }}/']
+      image: {{ include "typemill.testImage" . | quote }}
+      imagePullPolicy: {{ $testImage.pullPolicy | default "IfNotPresent" }}
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop:
+            - ALL
+      command:
+        - wget
+      args:
+        - --spider
+        - --timeout=10
+        - http://{{ include "typemill.fullname" . }}:{{ .Values.service.port }}{{ .Values.readinessProbe.path }}
+      {{- with $tests.resources }}
+      resources:
+        {{- toYaml . | nindent 8 }}
+      {{- else }}
+      resources:
+        limits:
+          cpu: 100m
+          memory: 32Mi
+        requests:
+          cpu: 10m
+          memory: 16Mi
+      {{- end }}
   restartPolicy: Never
+{{- end }}
