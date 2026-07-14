@@ -234,7 +234,7 @@ tests:
     # -- Container image repository for the Helm connectivity test
     repository: busybox
     # -- Container image tag for the Helm connectivity test
-    tag: "1.37.0"
+    tag: "1.38.0"
     # -- Immutable multi-platform digest for the Helm connectivity test image
     digest: "sha256:9532d8c39891ca2ecde4d30d7710e01fb739c87a8b9299685c63704296b16028"
     # -- Image pull policy for the Helm connectivity test
