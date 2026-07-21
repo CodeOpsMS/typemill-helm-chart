@@ -20,7 +20,7 @@ tests:
     asserts:
       - equal:
           path: spec.template.spec.containers[0].image
-          value: kixote/typemill@sha256:9fea8cb2bcfaeb903ad3f976b25051636b09a3fe42e7fee04e6f5b255b6361cf
+          value: kixote/typemill@sha256:52e081c1149d8b4c8ae6b03b03099411d9d95f32ee7ce6b61890b391700471bd
 
   - it: should reject multiple replicas
     set:
