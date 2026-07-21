@@ -5,6 +5,69 @@ entries:
       artifacthub.io/category: integration-delivery
       artifacthub.io/changes: |
         - kind: security
+          description: Update Typemill to v2.25.0 with the 2FA brute-force protection bypass fix
+        - kind: added
+          description: Add configurable AI request timeout and reasoning-effort bootstrap values
+        - kind: changed
+          description: Pin the Typemill, AI bootstrap, and Helm test images to verified OCI index digests
+        - kind: changed
+          description: Correct the BusyBox 1.38.0 tag and digest mismatch in the Helm connectivity test
+        - kind: fixed
+          description: Keep successful Helm test pods available long enough for helm test --logs
+      artifacthub.io/containsSecurityUpdates: "true"
+      artifacthub.io/images: |
+        - name: typemill
+          image: kixote/typemill:v2.25.0
+        - name: yq
+          image: mikefarah/yq:4.53.3
+        - name: busybox
+          image: busybox:1.38.0
+      artifacthub.io/license: MIT
+      artifacthub.io/links: |
+        - name: Typemill Documentation
+          url: https://docs.typemill.net/
+        - name: Typemill Source
+          url: https://github.com/typemill/typemill
+        - name: Docker Image
+          url: https://hub.docker.com/r/kixote/typemill
+        - name: support
+          url: https://github.com/codeopsms/typemill-helm-chart/issues
+      artifacthub.io/screenshots: |
+        - title: Typemill Editor
+          url: https://typemill.net/media/original/typemill-editor-072025.webp
+    apiVersion: v2
+    appVersion: v2.25.0
+    created: "2026-07-21T10:48:41.671289801Z"
+    description: Helm chart for Typemill - a lightweight open-source flat-file CMS
+      for creating websites and eBooks from Markdown.
+    digest: c60b116ce8293a2798b8259f235c939d9a024c835292d15cffd9d3b00d46ea2e
+    home: https://typemill.net
+    icon: https://typemill.net/media/live/typemill-hero-1.png
+    keywords:
+    - typemill
+    - cms
+    - flat-file
+    - markdown
+    - documentation
+    - ebook
+    - wiki
+    kubeVersion: '>=1.19.0-0'
+    maintainers:
+    - email: maintainer@example.com
+      name: codeopsms
+      url: https://github.com/codeopsms
+    name: typemill
+    sources:
+    - https://github.com/typemill/typemill
+    - https://hub.docker.com/r/kixote/typemill
+    type: application
+    urls:
+    - https://github.com/CodeOpsMS/typemill-helm-chart/releases/download/typemill-2.1.0/typemill-2.1.0.tgz
+    version: 2.1.0
+  - annotations:
+      artifacthub.io/category: integration-delivery
+      artifacthub.io/changes: |
+        - kind: security
           description: Update Typemill to v2.24.2 with path traversal, password reset, 2FA, and user security fixes
         - kind: changed
           description: Pin the default Typemill image to its verified manifest digest
@@ -486,4 +549,4 @@ entries:
     urls:
     - https://codeopsms.github.io/typemill-helm-chart/typemill-1.0.0.tgz
     version: 1.0.0
-generated: "2026-07-13T10:27:32.672063534Z"
+generated: "2026-07-21T10:48:41.671333272Z"
