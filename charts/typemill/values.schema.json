@@ -508,6 +508,31 @@
           ],
           "description": "Typemill maximum output tokens"
         },
+        "timeoutSeconds": {
+          "type": "integer",
+          "enum": [
+            120,
+            180,
+            240,
+            300,
+            360,
+            420,
+            480,
+            600
+          ],
+          "description": "Typemill AI request timeout in seconds"
+        },
+        "reasoningEffort": {
+          "type": "string",
+          "enum": [
+            "",
+            "none",
+            "low",
+            "medium",
+            "high"
+          ],
+          "description": "Reasoning effort for compatible OpenAI-style models. Empty uses the provider default."
+        },
         "initContainer": {
           "type": "object",
           "properties": {

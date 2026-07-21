@@ -10,7 +10,7 @@ image:
   tag: ""
   # -- Image digest for immutable pinning. If set, this overrides the tag.
   # To use image.tag, explicitly set this to an empty string.
-  digest: "sha256:9fea8cb2bcfaeb903ad3f976b25051636b09a3fe42e7fee04e6f5b255b6361cf"
+  digest: "sha256:52e081c1149d8b4c8ae6b03b03099411d9d95f32ee7ce6b61890b391700471bd"
 
 # -- Image pull secrets for private registries
 imagePullSecrets: []
@@ -103,13 +103,18 @@ ai:
   temperature: "0.7"
   # -- Typemill AI maximum output token setting.
   outputTokens: 4000
+  # -- Typemill AI request timeout in seconds.
+  timeoutSeconds: 120
+  # -- Reasoning effort for compatible OpenAI-style models. Empty uses the provider default.
+  reasoningEffort: ""
   initContainer:
     image:
       # -- yq image used to merge AI settings into Typemill persisted YAML files.
       repository: mikefarah/yq
       tag: "4.53.3"
-      # -- Optional yq image digest for immutable pinning. If set, this overrides the tag.
-      digest: ""
+      # -- yq image digest for immutable pinning. If set, this overrides the tag.
+      # To use a custom tag, explicitly set this to an empty string.
+      digest: "sha256:11a1f0b604b13dbbdc662260d8db6f644b22d8553122a25c1b5b2e8713ca6977"
       pullPolicy: IfNotPresent
     # -- Security context for the AI bootstrap init container.
     # The yq image runs as a non-root user by default, but freshly provisioned
@@ -236,7 +241,7 @@ tests:
     # -- Container image tag for the Helm connectivity test
     tag: "1.38.0"
     # -- Immutable multi-platform digest for the Helm connectivity test image
-    digest: "sha256:9532d8c39891ca2ecde4d30d7710e01fb739c87a8b9299685c63704296b16028"
+    digest: "sha256:fd8d9aa63ba2f0982b5304e1ee8d3b90a210bc1ffb5314d980eb6962f1a9715d"
     # -- Image pull policy for the Helm connectivity test
     pullPolicy: IfNotPresent
   # -- Resource requests and limits for the Helm connectivity test

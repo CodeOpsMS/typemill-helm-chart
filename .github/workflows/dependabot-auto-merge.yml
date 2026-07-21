@@ -18,14 +18,33 @@ jobs:
         with:
           github-token: "${{ secrets.GITHUB_TOKEN }}"
 
-      - name: Auto-approve Dependabot PRs
+      - name: Check auto-merge eligibility
+        id: eligibility
+        env:
+          DEPENDENCY_NAMES: ${{ steps.metadata.outputs.dependency-names }}
+          PACKAGE_ECOSYSTEM: ${{ steps.metadata.outputs.package-ecosystem }}
+          UPDATE_TYPE: ${{ steps.metadata.outputs.update-type }}
+        run: |
+          eligible=false
+          if [[ "$PACKAGE_ECOSYSTEM" == "github_actions" ]] && \
+             [[ "$UPDATE_TYPE" == "version-update:semver-patch" || "$UPDATE_TYPE" == "version-update:semver-minor" ]]; then
+            case "$DEPENDENCY_NAMES" in
+              actions/checkout|actions/setup-python|azure/setup-helm|dependabot/fetch-metadata|helm/chart-releaser-action|helm/chart-testing-action|helm/kind-action)
+                eligible=true
+                ;;
+            esac
+          fi
+          echo "eligible=$eligible" >> "$GITHUB_OUTPUT"
+
+      - name: Auto-approve eligible GitHub Actions updates
+        if: steps.eligibility.outputs.eligible == 'true'
         run: gh pr review --approve "$PR_URL"
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Auto-merge minor and patch updates
-        if: steps.metadata.outputs.update-type == 'version-update:semver-patch' || steps.metadata.outputs.update-type == 'version-update:semver-minor'
+      - name: Auto-merge eligible GitHub Actions updates
+        if: steps.eligibility.outputs.eligible == 'true'
         run: gh pr merge --auto --squash "$PR_URL"
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}

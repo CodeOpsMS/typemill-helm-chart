@@ -97,7 +97,7 @@ precedence over the tag for immutable image pinning.
 {{- if $digest -}}
 {{- printf "%s@%s" $repository $digest -}}
 {{- else -}}
-{{- printf "%s:%s" $repository ($image.tag | default "1.37.0") -}}
+{{- printf "%s:%s" $repository ($image.tag | default "1.38.0") -}}
 {{- end -}}
 {{- end }}
 

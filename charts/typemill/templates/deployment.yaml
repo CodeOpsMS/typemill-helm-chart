@@ -39,6 +39,8 @@
 {{- end -}}
 {{- end -}}
 {{- $aiProviderTerms := .Values.ai.providerTerms | default "" -}}
+{{- $aiTimeoutSeconds := .Values.ai.timeoutSeconds | default 120 -}}
+{{- $aiReasoningEffort := .Values.ai.reasoningEffort | default "" -}}
 {{- $aiSecretKey := .Values.ai.secretKeys.apiKey -}}
 {{- if and $legacyValuesActive (eq $legacyService "chatgpt") -}}
 {{- $aiSecretKey = .Values.ai.secretKeys.chatgptKey -}}
@@ -118,7 +120,9 @@ spec:
                 .ai_provider_name = strenv(TYPEMILL_AI_PROVIDER_NAME) |
                 .ai_provider_terms = strenv(TYPEMILL_AI_PROVIDER_TERMS) |
                 .aitemperature = strenv(TYPEMILL_AI_TEMPERATURE) |
-                .aioutputtoken = strenv(TYPEMILL_AI_OUTPUT_TOKENS)' /work/settings/settings.yaml
+                .aioutputtoken = strenv(TYPEMILL_AI_OUTPUT_TOKENS) |
+                .aitimeout = strenv(TYPEMILL_AI_TIMEOUT_SECONDS) |
+                .ai_reasoning_effort = strenv(TYPEMILL_AI_REASONING_EFFORT)' /work/settings/settings.yaml
               if [ -n "${TYPEMILL_AI_API_KEY:-}" ]; then
                 yq eval -i '.ai_api_key = strenv(TYPEMILL_AI_API_KEY)' /work/settings/secrets.yaml
                 yq eval -i 'del(.chatgptKey, .claudeKey)' /work/settings/secrets.yaml
@@ -140,6 +144,10 @@ spec:
               value: {{ .Values.ai.temperature | quote }}
             - name: TYPEMILL_AI_OUTPUT_TOKENS
               value: {{ .Values.ai.outputTokens | quote }}
+            - name: TYPEMILL_AI_TIMEOUT_SECONDS
+              value: {{ $aiTimeoutSeconds | quote }}
+            - name: TYPEMILL_AI_REASONING_EFFORT
+              value: {{ $aiReasoningEffort | quote }}
             {{- if and .Values.ai.existingSecret (ne $aiAdapter "none") }}
             - name: TYPEMILL_AI_API_KEY
               valueFrom:
