@@ -103,10 +103,11 @@ This repository automates discovery, validation, and publishing while retaining 
 | What | How | Interval |
 |------|-----|----------|
 | New Typemill Docker image | Auto-update workflow opens a version-and-digest PR | Every 6 hours |
-| GitHub Actions updates | Dependabot PRs; eligible minor/patch updates auto-merge | Weekly |
+| GitHub Actions updates | Dependabot PRs; allowlisted minor/patch updates auto-merge after required checks | Weekly |
+| Docker dependency updates | Dependabot PRs with manual digest and chart-version review | Daily |
 | GitHub Pages Helm repository | Healthcheck verifies `gh-pages` and `index.yaml` | Daily |
 
-Chart releases are published from `main` after the update PR has passed CI and has been merged.
+Chart releases are published from `main` after the update PR has passed the required Helm 3 and Helm 4 checks and has been merged.
 The repository setting that allows GitHub Actions to create pull requests must remain enabled.
 
 ### GitHub Pages Helm Repository

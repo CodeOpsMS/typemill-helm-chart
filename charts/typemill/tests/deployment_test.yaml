@@ -22,6 +22,15 @@ tests:
           path: spec.template.spec.containers[0].image
           value: kixote/typemill@sha256:52e081c1149d8b4c8ae6b03b03099411d9d95f32ee7ce6b61890b391700471bd
 
+  - it: should fall back to chart appVersion when tag and digest are empty
+    set:
+      image.tag: ""
+      image.digest: ""
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: kixote/typemill:v2.25.0
+
   - it: should reject multiple replicas
     set:
       replicaCount: 3
@@ -435,6 +444,7 @@ tests:
 
   - it: should render image digest when set
     set:
+      image.tag: mutable-tag-must-not-win
       image.digest: sha256:1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef
     asserts:
       - equal:

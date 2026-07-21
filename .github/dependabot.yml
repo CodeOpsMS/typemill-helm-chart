@@ -16,7 +16,7 @@ updates:
       - "CodeOpsMS"
     open-pull-requests-limit: 10
 
-  # Docker — monitor kixote/typemill for new image tags
+  # Docker — propose chart image updates for manual tag/digest review
   - package-ecosystem: "docker"
     directory: "/charts/typemill"
     schedule:

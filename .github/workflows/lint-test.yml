@@ -2,9 +2,7 @@ name: Lint and Test Charts
 
 on:
   workflow_dispatch: {}
-  pull_request:
-    paths:
-      - 'charts/**'
+  pull_request: {}
 
 jobs:
   lint-test:
@@ -39,6 +37,7 @@ jobs:
         id: list-changed
         run: |
           changed=$(ct list-changed --target-branch ${{ github.event.repository.default_branch }})
+          echo "changed=false" >> "$GITHUB_OUTPUT"
           if [[ -n "$changed" ]]; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
@@ -46,6 +45,10 @@ jobs:
       - name: Run chart-testing (lint)
         if: steps.list-changed.outputs.changed == 'true'
         run: ct lint --target-branch ${{ github.event.repository.default_branch }}
+
+      - name: Verify default image digests against Docker Hub
+        if: steps.list-changed.outputs.changed == 'true' && matrix.helm-version == 'v4.2.3'
+        run: scripts/verify-image-digests.sh
 
       - name: Install helm-unittest plugin
         if: steps.list-changed.outputs.changed == 'true'
@@ -75,6 +78,8 @@ jobs:
             --set ai.adapter=openai \
             --set ai.baseUrl=http://ollama.default.svc.cluster.local:11434/v1 \
             --set ai.model=smoke-test \
+            --set ai.timeoutSeconds=180 \
+            --set ai.reasoningEffort=low \
             --set ingress.enabled=false \
             >/tmp/typemill-rendered.yaml
 
@@ -92,6 +97,8 @@ jobs:
           expect_failure helm template invalid charts/typemill --set autoscaling.enabled=true
           expect_failure helm template invalid charts/typemill --set image.digest=invalid
           expect_failure helm template invalid charts/typemill --set ai.initContainer.image.digest=invalid
+          expect_failure helm template invalid charts/typemill --set ai.timeoutSeconds=150
+          expect_failure helm template invalid charts/typemill --set ai.reasoningEffort=extreme
           expect_failure helm template invalid charts/typemill --set tests.image.digest=invalid
           expect_failure helm template invalid charts/typemill --set readinessProbe.path=tm/login
           expect_failure helm template invalid charts/typemill --set-string 'typemill.phpIniConfig.bad\.conf=value'

@@ -139,9 +139,11 @@ The following table lists the configurable parameters of the Typemill chart and 
 | `ai.claudeModel` | Deprecated legacy Claude model value; use `ai.model` instead | `claude-sonnet-4-5` |
 | `ai.temperature` | Typemill AI temperature setting | `"0.7"` |
 | `ai.outputTokens` | Typemill maximum output tokens | `4000` |
+| `ai.timeoutSeconds` | AI provider request timeout in seconds | `120` |
+| `ai.reasoningEffort` | Reasoning effort for compatible OpenAI-style models (`""`, `none`, `low`, `medium`, `high`) | `""` |
 | `ai.initContainer.image.repository` | yq image used for YAML bootstrap | `mikefarah/yq` |
 | `ai.initContainer.image.tag` | yq image tag | `4.53.3` |
-| `ai.initContainer.image.digest` | Optional yq image digest for immutable pinning; overrides tag when set | `""` |
+| `ai.initContainer.image.digest` | Immutable yq image digest; overrides tag when set | pinned; see `values.yaml` |
 | `ai.initContainer.securityContext` | Init container security context | `{"runAsGroup":0,"runAsUser":0}` |
 | `ai.initContainer.resources` | Init container resource requests/limits | `{}` |
 
@@ -174,7 +176,9 @@ image:
   digest: ""
 ```
 
-The AI bootstrap init-container supports the same pattern via `ai.initContainer.image.digest`.
+The AI bootstrap init-container and Helm connectivity test use the same pattern via
+`ai.initContainer.image.digest` and `tests.image.digest`. All three default images are
+pinned to verified OCI index digests.
 
 ## Persistence
 
@@ -216,8 +220,8 @@ The AI bootstrap init-container supports the same pattern via `ai.initContainer.
 |-----------|-------------|---------|
 | `tests.enabled` | Enable the hardened Helm connectivity test | `true` |
 | `tests.image.repository` | Connectivity test image repository | `busybox` |
-| `tests.image.tag` | Connectivity test image tag | `1.37.0` |
-| `tests.image.digest` | Immutable connectivity test image digest | `sha256:9532d8...` |
+| `tests.image.tag` | Connectivity test image tag | `1.38.0` |
+| `tests.image.digest` | Immutable connectivity test image digest | `sha256:fd8d9a...` |
 | `tests.image.pullPolicy` | Connectivity test pull policy | `IfNotPresent` |
 | `tests.resources` | Connectivity test resource requests and limits | see values.yaml |
 
@@ -226,6 +230,9 @@ Run the test after installation or upgrade:
 ```bash
 helm test my-typemill --logs
 ```
+
+The completed test pod is retained so Helm can collect its logs. It is deleted
+automatically before the next test run; delete it manually if no further test is planned.
 
 ### Typemill Configuration
 
@@ -248,7 +255,7 @@ for the following directories:
 | `settings/` | Site configuration and user data |
 | `media/` | Uploaded media files |
 | `data/` | Navigation and plugin data |
-| `cache/` | Template and content cache |
+| `cache/` | Template/content cache and generated export assets under `cache/generated/` |
 | `plugins/` | Installed plugins |
 | `content/` | Markdown content files |
 | `themes/` | Installed themes |
@@ -275,7 +282,7 @@ persistence:
 Typemill stores AI configuration in persisted YAML files below `/var/www/html/settings`.
 When `ai.enabled=true`, this chart runs an init container on every pod start before Typemill starts and updates:
 
-- `settings/settings.yaml` with `ai_adapter`, `ai_base_url`, `ai_model`, optional provider display metadata, temperature, and output-token settings
+- `settings/settings.yaml` with `ai_adapter`, `ai_base_url`, `ai_model`, optional provider display metadata, temperature, output-token, request-timeout, and reasoning-effort settings
 - `settings/secrets.yaml` with `ai_api_key` from an existing Kubernetes Secret when `ai.existingSecret` is set
 
 This requires `persistence.enabled=true`. API keys should not be stored directly in `values.yaml`; use `ai.existingSecret` when the provider requires a key. For local OpenAI-compatible providers such as Ollama or LM Studio, the Secret can be omitted.
@@ -283,7 +290,7 @@ This requires `persistence.enabled=true`. API keys should not be stored directly
 > **Security note:** Typemill reads provider keys from `settings/secrets.yaml`, so the init container copies the selected API key from the Kubernetes Secret into the persisted PVC. Treat the PVC as secret-bearing storage and include it in your backup/encryption/access-control design.
 > If `ai.existingSecret` is omitted or `ai.adapter=none`, the bootstrap removes `ai_api_key` and legacy `chatgptKey`/`claudeKey` entries from `settings/secrets.yaml`.
 
-> **Supply-chain note:** Enabling AI bootstrap pulls an additional `mikefarah/yq` init-container image. You can override `ai.initContainer.image.*`; for high-security environments, pin the image by digest in your own values.
+> **Supply-chain note:** Enabling AI bootstrap pulls an additional `mikefarah/yq` init-container image. Its default is pinned by digest. When overriding `ai.initContainer.image.tag`, clear or replace `ai.initContainer.image.digest` explicitly.
 
 > **Security context note:** The bootstrap init-container defaults to `runAsUser: 0` and `runAsGroup: 0` because many dynamically provisioned PVC subPath directories are root-owned on first mount. Override `ai.initContainer.securityContext` only if your storage class or pod security policy guarantees write access for another user.
 
@@ -330,8 +337,13 @@ helm upgrade --install my-typemill typemill/typemill \
   --set ai.baseUrl=http://ollama.default.svc.cluster.local:11434/v1 \
   --set ai.model=llama3 \
   --set ai.providerName=Ollama \
+  --set ai.timeoutSeconds=180 \
   --set ai.providerTerms=
 ```
+
+Set `ai.reasoningEffort` only when the selected provider and model explicitly
+support that OpenAI-compatible parameter. Leave it empty for general-purpose
+Ollama models.
 
 When Typemill and Ollama run in the same Kubernetes cluster, use Ollama's internal
 Service DNS name. Ollama does not need a public Ingress for this integration.
@@ -339,6 +351,36 @@ Service DNS name. Ollama does not need a public Ingress for this integration.
 Each Typemill user still has to agree to the selected AI provider in the Kixote AI interface before using the feature.
 
 ## Upgrading
+
+Before every upgrade, back up the Typemill PVC or create a storage snapshot. Chart 2.1.0
+updates Typemill to v2.25.0 and adds AI timeout and reasoning-effort values without
+requiring a data migration.
+
+Helm's `--reuse-values` mode can retain defaults from the previously installed chart,
+including an old image digest. With Helm 3.14 or newer, prefer
+`--reset-then-reuse-values` so that new chart defaults are loaded before explicitly
+supplied release values are reapplied:
+
+```bash
+helm repo update
+helm upgrade my-typemill typemill/typemill \
+  --version 2.1.0 \
+  --reset-then-reuse-values
+```
+
+With Helm 3.8 through 3.13, use `--reset-values` and explicitly reapply every custom
+values file and command-line override instead:
+
+```bash
+helm repo update
+helm upgrade my-typemill typemill/typemill \
+  --version 2.1.0 \
+  --reset-values \
+  --values my-values.yaml
+```
+
+Review `helm get values my-typemill` first. If `image.digest` was explicitly configured,
+replace it with the v2.25.0 digest or intentionally keep the custom pin.
 
 Chart 2.0.0 is a major chart release because it makes previously unsafe or
 unsupported configurations explicit: Typemill is restricted to one replica,
@@ -352,11 +394,6 @@ When upgrading, the chart uses `strategy: Recreate` by default. This means:
 2. The new pod is started with the updated image
 
 This ensures no two pods try to access the PVC simultaneously with `ReadWriteOnce` access mode.
-
-```bash
-helm repo update
-helm upgrade my-typemill typemill/typemill
-```
 
 When overriding the application with a mutable tag, clear the default digest as well:
 
