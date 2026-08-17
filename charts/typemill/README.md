@@ -16,7 +16,7 @@ Docker image.
 
 - Kubernetes >= 1.19
 - Helm >= 3.8
-- Linux/amd64 nodes for the upstream Typemill v2.25.0 image
+- Linux/amd64 nodes for the upstream Typemill v2.26.0 image
 - (Optional) An Ingress controller for external access
 - (Optional) A StorageClass for persistent storage
 
@@ -167,12 +167,12 @@ The following table lists the configurable parameters of the Typemill chart and 
 
 #### Image digest pinning
 
-The default Typemill image is pinned to the verified v2.25.0 manifest digest. When `image.digest` is set, it takes precedence over `image.tag`. To use a custom tag, clear the digest explicitly:
+The default Typemill image is pinned to the verified v2.26.0 manifest digest. When `image.digest` is set, it takes precedence over `image.tag`. To use a custom tag, clear the digest explicitly:
 
 ```yaml
 image:
   repository: kixote/typemill
-  tag: v2.25.0
+  tag: v2.26.0
   digest: ""
 ```
 
@@ -353,7 +353,7 @@ Each Typemill user still has to agree to the selected AI provider in the Kixote 
 ## Upgrading
 
 Before every upgrade, back up the Typemill PVC or create a storage snapshot. Chart 2.1.0
-updates Typemill to v2.25.0 and adds AI timeout and reasoning-effort values without
+updates Typemill to v2.26.0 and adds AI timeout and reasoning-effort values without
 requiring a data migration.
 
 Helm's `--reuse-values` mode can retain defaults from the previously installed chart,
@@ -380,7 +380,7 @@ helm upgrade my-typemill typemill/typemill \
 ```
 
 Review `helm get values my-typemill` first. If `image.digest` was explicitly configured,
-replace it with the v2.25.0 digest or intentionally keep the custom pin.
+replace it with the v2.26.0 digest or intentionally keep the custom pin.
 
 Chart 2.0.0 is a major chart release because it makes previously unsafe or
 unsupported configurations explicit: Typemill is restricted to one replica,
@@ -399,7 +399,7 @@ When overriding the application with a mutable tag, clear the default digest as 
 
 ```bash
 helm upgrade my-typemill typemill/typemill \
-  --set image.tag=v2.25.0 \
+  --set image.tag=v2.26.0 \
   --set image.digest=
 ```
 
