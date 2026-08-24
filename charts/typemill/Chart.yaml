@@ -4,8 +4,8 @@ description: >-
   Helm chart for Typemill - a lightweight open-source flat-file CMS
   for creating websites and eBooks from Markdown.
 type: application
-version: 2.1.0
-appVersion: "v2.25.0"
+version: 2.1.1
+appVersion: "v2.26.1"
 kubeVersion: ">=1.19.0-0"
 keywords:
   - typemill
@@ -27,21 +27,13 @@ icon: https://typemill.net/media/live/typemill-hero-1.png
 annotations:
   artifacthub.io/license: MIT
   artifacthub.io/category: integration-delivery
-  artifacthub.io/containsSecurityUpdates: "true"
+  artifacthub.io/containsSecurityUpdates: "false"
   artifacthub.io/changes: |
-    - kind: security
-      description: Update Typemill to v2.25.0 with the 2FA brute-force protection bypass fix
-    - kind: added
-      description: Add configurable AI request timeout and reasoning-effort bootstrap values
     - kind: changed
-      description: Pin the Typemill, AI bootstrap, and Helm test images to verified OCI index digests
-    - kind: changed
-      description: Correct the BusyBox 1.38.0 tag and digest mismatch in the Helm connectivity test
-    - kind: fixed
-      description: Keep successful Helm test pods available long enough for helm test --logs
+      description: Update Typemill to v2.26.1
   artifacthub.io/images: |
     - name: typemill
-      image: kixote/typemill:v2.25.0
+      image: kixote/typemill:v2.26.1
     - name: yq
       image: mikefarah/yq:4.53.3
     - name: busybox
