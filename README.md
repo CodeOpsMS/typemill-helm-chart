@@ -28,7 +28,7 @@ Use it for handbooks, documentations, manuals, web-novels, traditional websites,
 | **Source** | [GitHub](https://github.com/CodeOpsMS/typemill-helm-chart) |
 | **OCI Registry** | `ghcr.io/codeopsms/helm-charts/typemill` |
 
-The upstream `kixote/typemill` image for Typemill v2.25.0 currently supports Linux/amd64.
+The upstream `kixote/typemill` image for Typemill v2.26.2 currently supports Linux/amd64.
 
 ## Prerequisites
 
