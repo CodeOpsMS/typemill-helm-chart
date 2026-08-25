@@ -4,7 +4,7 @@ description: >-
   Helm chart for Typemill - a lightweight open-source flat-file CMS
   for creating websites and eBooks from Markdown.
 type: application
-version: 2.1.1
+version: 2.2.0
 appVersion: "v2.26.2"
 kubeVersion: ">=1.19.0-0"
 keywords:
@@ -27,13 +27,27 @@ icon: https://typemill.net/media/live/typemill-hero-1.png
 annotations:
   artifacthub.io/license: MIT
   artifacthub.io/category: integration-delivery
-  artifacthub.io/containsSecurityUpdates: "false"
+  artifacthub.io/containsSecurityUpdates: "true"
   artifacthub.io/changes: |
+    - kind: security
+      description: Fix unauthorized media downloads and XSS vulnerabilities in inline links and hero image alt text
+    - kind: added
+      description: Safely migrate unchanged persisted Cyanine v2.24.2/v2.25 files to their v2.26 security-fixed versions
     - kind: changed
-      description: Update Typemill to v2.26.2
+      description: Update Typemill to v2.26.2, including news and blog date sorting, reverse-proxy subpath handling, SMTP username validation, PHP 8.5 compatibility fixes, setup directory creation, and the corrected PHP 8.2 setup requirement
+    - kind: added
+      description: Expose the upstream Docker proxy-detection switch as a chart value
+    - kind: changed
+      description: Move the upstream container runtime to PHP 8.5 and drop PHP 8.1 support
+    - kind: changed
+      description: Refresh the BusyBox 1.38.0 index digest after its upstream tag was republished
+    - kind: fixed
+      description: Fix user profile image handling and filenames without Typemill prefixes
   artifacthub.io/images: |
     - name: typemill
       image: kixote/typemill:v2.26.2
+    - name: typemill-cyanine-v226-migration
+      image: kixote/typemill:v2.26.0
     - name: yq
       image: mikefarah/yq:4.53.3
     - name: busybox

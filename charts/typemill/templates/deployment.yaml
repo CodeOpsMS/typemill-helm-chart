@@ -47,6 +47,27 @@
 {{- else if and $legacyValuesActive (eq $legacyService "claude") -}}
 {{- $aiSecretKey = .Values.ai.secretKeys.claudeKey -}}
 {{- end -}}
+{{- $securityMigrations := .Values.securityMigrations | default dict -}}
+{{- $cyanineV226 := get $securityMigrations "cyanineV226" | default dict -}}
+{{- $cyanineV226Enabled := true -}}
+{{- if hasKey $cyanineV226 "enabled" -}}
+{{- $cyanineV226Enabled = get $cyanineV226 "enabled" -}}
+{{- end -}}
+{{- $cyanineV226FailOnModified := false -}}
+{{- if hasKey $cyanineV226 "failOnModified" -}}
+{{- $cyanineV226FailOnModified = get $cyanineV226 "failOnModified" -}}
+{{- end -}}
+{{- $cyanineV226Image := get $cyanineV226 "image" | default dict -}}
+{{- $cyanineV226PullPolicy := get $cyanineV226Image "pullPolicy" | default "IfNotPresent" -}}
+{{- $defaultCyanineV226SecurityContext := dict "allowPrivilegeEscalation" false "readOnlyRootFilesystem" true "runAsNonRoot" true "runAsUser" 33 "runAsGroup" 33 "capabilities" (dict "drop" (list "ALL")) -}}
+{{- $cyanineV226SecurityContext := get $cyanineV226 "securityContext" | default $defaultCyanineV226SecurityContext -}}
+{{- $cyanineV226Resources := get $cyanineV226 "resources" | default dict -}}
+{{- $runCyanineV226 := and .Values.persistence.enabled $cyanineV226Enabled -}}
+{{- $typemillValues := .Values.typemill | default dict -}}
+{{- $proxyDetection := false -}}
+{{- if hasKey $typemillValues "proxyDetection" -}}
+{{- $proxyDetection = get $typemillValues "proxyDetection" -}}
+{{- end -}}
 {{- $hasAppVolumes := or .Values.persistence.enabled .Values.typemill.htaccess .Values.typemill.phpIniConfig -}}
 {{- $hasPodAnnotations := or .Values.typemill.phpIniConfig .Values.typemill.htaccess .Values.podAnnotations -}}
 {{- include "typemill.validateScaling" . -}}
@@ -103,8 +124,185 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
-      {{- if .Values.ai.enabled }}
+      {{- if or $runCyanineV226 .Values.ai.enabled }}
       initContainers:
+        {{- if $runCyanineV226 }}
+        - name: cyanine-v226-security-migration
+          image: {{ include "typemill.cyanineV226MigrationImage" . | quote }}
+          imagePullPolicy: {{ $cyanineV226PullPolicy }}
+          command:
+            - sh
+            - -ec
+            - |
+              source_root=/var/www/html/themes.default/cyanine
+              target_parent=/work/themes
+              target_root=/work/themes/cyanine
+              modified_files=0
+              temp_file=
+
+              if [ ! -d "$target_parent" ] || [ ! -r "$target_parent" ] || [ ! -x "$target_parent" ]; then
+                echo "ERROR: Cyanine v2.26 migration cannot read or traverse ${target_parent} as $(id -u):$(id -g)" >&2
+                exit 1
+              fi
+              if [ -e "$target_root" ] && { [ ! -r "$target_root" ] || [ ! -x "$target_root" ]; }; then
+                echo "ERROR: Cyanine v2.26 migration cannot read or traverse ${target_root} as $(id -u):$(id -g)" >&2
+                exit 1
+              fi
+
+              cleanup_temp() {
+                if [ -n "${temp_file:-}" ] && [ -e "$temp_file" ]; then
+                  rm -f -- "$temp_file"
+                fi
+              }
+
+              digest_file() {
+                digest_output=$(sha256sum "$1") || {
+                  echo "ERROR: Cyanine v2.26 migration could not hash $1" >&2
+                  return 1
+                }
+                printf '%s\n' "${digest_output%% *}"
+              }
+
+              trap cleanup_temp 0
+              trap 'exit 1' HUP INT TERM
+
+              mark_modified() {
+                if [ "$mode" = "scan" ]; then
+                  echo "WARNING: $1" >&2
+                  modified_files=$((modified_files + 1))
+                  return 0
+                fi
+                return 0
+              }
+
+              process_file() {
+                mode="$1"
+                relative_path="$2"
+                old_sha="$3"
+                new_sha="$4"
+                source_file="${source_root}/${relative_path}"
+                target_file="${target_root}/${relative_path}"
+                target_dir=${target_file%/*}
+                temp_file=
+
+                if [ -L "$target_root" ] || { [ -e "$target_root" ] && [ ! -d "$target_root" ]; } || \
+                   [ -L "$target_dir" ] || { [ -e "$target_dir" ] && [ ! -d "$target_dir" ]; }; then
+                  if ! mark_modified "refusing unsafe directory path for ${relative_path}; manual security review required."; then
+                    exit 1
+                  fi
+                  return
+                fi
+                if [ -L "$target_file" ]; then
+                  if ! mark_modified "preserving symbolic link ${relative_path}; manual security review required."; then
+                    exit 1
+                  fi
+                  return
+                fi
+
+                if [ ! -e "$target_file" ]; then
+                  if [ "$mode" = "scan" ]; then
+                    echo "Cyanine v2.26 migration: ${relative_path} is absent; leaving initialization to Typemill."
+                  fi
+                  return
+                fi
+                if [ ! -f "$target_file" ]; then
+                  if ! mark_modified "${relative_path} is not a regular file; manual security review required."; then
+                    exit 1
+                  fi
+                  return
+                fi
+
+                if ! current_sha=$(digest_file "$target_file"); then
+                  exit 1
+                fi
+                if [ "$current_sha" = "$new_sha" ]; then
+                  if [ "$mode" = "scan" ]; then
+                    echo "Cyanine v2.26 migration: ${relative_path} is already current."
+                  fi
+                  return
+                fi
+                if [ "$current_sha" != "$old_sha" ]; then
+                  if ! mark_modified "preserving customized ${relative_path}; apply the upstream v2.26 security changes manually."; then
+                    exit 1
+                  fi
+                  return
+                fi
+                if [ ! -f "$source_file" ] || [ -L "$source_file" ]; then
+                  echo "ERROR: Cyanine v2.26 migration source is missing: ${source_file}" >&2
+                  exit 1
+                fi
+
+                if ! source_sha=$(digest_file "$source_file"); then
+                  exit 1
+                fi
+                if [ "$source_sha" != "$new_sha" ]; then
+                  echo "ERROR: Cyanine v2.26 migration source has unexpected digest for ${relative_path}: ${source_sha}" >&2
+                  exit 1
+                fi
+                if [ "$mode" = "scan" ]; then
+                  return
+                fi
+
+                if ! temp_file=$(mktemp "${target_file}.typemill-v226.XXXXXX"); then
+                  echo "ERROR: Cyanine v2.26 migration could not create a temporary file for ${relative_path}" >&2
+                  exit 1
+                fi
+                cp "$source_file" "$temp_file"
+                chmod 0644 "$temp_file"
+                if ! migrated_sha=$(digest_file "$temp_file"); then
+                  exit 1
+                fi
+                if [ "$migrated_sha" != "$new_sha" ]; then
+                  echo "ERROR: Cyanine v2.26 migration verification failed for ${relative_path}: ${migrated_sha}" >&2
+                  exit 1
+                fi
+                mv -f "$temp_file" "$target_file"
+                temp_file=
+                if ! migrated_sha=$(digest_file "$target_file"); then
+                  exit 1
+                fi
+                if [ "$migrated_sha" != "$new_sha" ]; then
+                  echo "ERROR: Cyanine v2.26 migration final verification failed for ${relative_path}: ${migrated_sha}" >&2
+                  exit 1
+                fi
+                echo "Cyanine v2.26 migration: updated ${relative_path}."
+              }
+
+              process_file scan blog.twig 3328ab536a75379fecab181bb07dbc46124adf84ae54509e62e68f3bbb8f8ab4 71a885d3aaeb3dce70f1d5fb35510a6c3c29780e939d39daea98118dfefa26fa
+              process_file scan home/landingpageNews.twig e5b85ecae171eba9ae600229a4cf09259aaba0ad3027bdf86999117534401e4d 2b3a49c379bade6f367040ff6ebd270a907f5af7753d0a2a3006af46e4694c36
+              process_file scan landingpage.twig b49df2d3b6be481aa282c799b51c9a25ecb6ffd52a836fa0d091bd8113ba2bba 6eb5fdd81f0db06aefaf07aededa3d3d9fe1666b079a123ba43529012b7e3842
+              process_file scan partials/posts.twig 2f88c75ba90abe87109495f70a1da2ff8c5eee6a9373255fc0b306c1efc5745a 5aecdf8d3e810236cc481539fa7302fd686bad7746482cae961bcb58ee076409
+              process_file scan cyanine.yaml fdcf0f9e229e6f9c57d23b35a6ed664df42fdfd90a2c9eb5805a9d790ddc7752 4dfb48aa2f39fbb30e20151451cbe33ee376b463e269fe1d30f3bff4efa62f51
+
+              if [ "$modified_files" -gt 0 ]; then
+                echo "WARNING: ${modified_files} customized Cyanine file(s) require manual review against the Typemill v2.26 security patch." >&2
+                if [ "$TYPEMILL_FAIL_ON_MODIFIED" = "true" ]; then
+                  exit 1
+                fi
+              fi
+
+              process_file apply blog.twig 3328ab536a75379fecab181bb07dbc46124adf84ae54509e62e68f3bbb8f8ab4 71a885d3aaeb3dce70f1d5fb35510a6c3c29780e939d39daea98118dfefa26fa
+              process_file apply home/landingpageNews.twig e5b85ecae171eba9ae600229a4cf09259aaba0ad3027bdf86999117534401e4d 2b3a49c379bade6f367040ff6ebd270a907f5af7753d0a2a3006af46e4694c36
+              process_file apply landingpage.twig b49df2d3b6be481aa282c799b51c9a25ecb6ffd52a836fa0d091bd8113ba2bba 6eb5fdd81f0db06aefaf07aededa3d3d9fe1666b079a123ba43529012b7e3842
+              process_file apply partials/posts.twig 2f88c75ba90abe87109495f70a1da2ff8c5eee6a9373255fc0b306c1efc5745a 5aecdf8d3e810236cc481539fa7302fd686bad7746482cae961bcb58ee076409
+              process_file apply cyanine.yaml fdcf0f9e229e6f9c57d23b35a6ed664df42fdfd90a2c9eb5805a9d790ddc7752 4dfb48aa2f39fbb30e20151451cbe33ee376b463e269fe1d30f3bff4efa62f51
+          env:
+            - name: TYPEMILL_FAIL_ON_MODIFIED
+              value: {{ $cyanineV226FailOnModified | quote }}
+          {{- with $cyanineV226SecurityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with $cyanineV226Resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: typemill-data
+              mountPath: /work/themes
+              subPath: themes
+        {{- end }}
+        {{- if .Values.ai.enabled }}
         - name: ai-config
           image: {{ include "typemill.aiInitImage" . | quote }}
           imagePullPolicy: {{ .Values.ai.initContainer.image.pullPolicy }}
@@ -167,6 +365,7 @@ spec:
             - name: typemill-data
               mountPath: /work/settings
               subPath: settings
+        {{- end }}
       {{- end }}
       containers:
         - name: {{ .Chart.Name }}
@@ -183,6 +382,8 @@ spec:
           env:
             - name: TZ
               value: {{ .Values.typemill.timezone | quote }}
+            - name: TYPEMILL_PROXY_DETECTION
+              value: {{ $proxyDetection | quote }}
           {{- if .Values.livenessProbe.enabled }}
           livenessProbe:
             httpGet:

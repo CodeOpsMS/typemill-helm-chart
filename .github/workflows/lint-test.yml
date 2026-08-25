@@ -36,7 +36,9 @@ jobs:
       - name: Run chart-testing (list-changed)
         id: list-changed
         run: |
-          changed=$(ct list-changed --target-branch ${{ github.event.repository.default_branch }})
+          changed=$(ct list-changed \
+            --config .github/ct.yaml \
+            --target-branch ${{ github.event.repository.default_branch }})
           echo "changed=false" >> "$GITHUB_OUTPUT"
           if [[ -n "$changed" ]]; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
@@ -44,7 +46,10 @@ jobs:
 
       - name: Run chart-testing (lint)
         if: steps.list-changed.outputs.changed == 'true'
-        run: ct lint --target-branch ${{ github.event.repository.default_branch }}
+        run: >-
+          ct lint
+          --config .github/ct.yaml
+          --target-branch ${{ github.event.repository.default_branch }}
 
       - name: Verify default image digests against Docker Hub
         if: steps.list-changed.outputs.changed == 'true' && matrix.helm-version == 'v4.2.3'
@@ -52,6 +57,8 @@ jobs:
 
       - name: Install helm-unittest plugin
         if: steps.list-changed.outputs.changed == 'true'
+        env:
+          HELM_VERSION: ${{ matrix.helm-version }}
         run: |
           plugin_args=(
             https://github.com/helm-unittest/helm-unittest
@@ -59,7 +66,7 @@ jobs:
           )
           # Helm 4 verifies plugin sources by default and requires an explicit
           # opt-out for VCS sources. Helm 3 does not support the --verify flag.
-          if [[ "${{ matrix.helm-version }}" == v4.* ]]; then
+          if [[ "$HELM_VERSION" == v4.* ]]; then
             plugin_args+=(--verify=false)
           fi
           helm plugin install "${plugin_args[@]}"
@@ -99,7 +106,14 @@ jobs:
           expect_failure helm template invalid charts/typemill --set ai.initContainer.image.digest=invalid
           expect_failure helm template invalid charts/typemill --set ai.timeoutSeconds=150
           expect_failure helm template invalid charts/typemill --set ai.reasoningEffort=extreme
+          expect_failure helm template invalid charts/typemill --set-string securityMigrations.cyanineV226.enabled=invalid
+          expect_failure helm template invalid charts/typemill --set-string securityMigrations.cyanineV226.failOnModified=invalid
+          expect_failure helm template invalid charts/typemill --set-string securityMigrations.cyanineV226.image.repository=
+          expect_failure helm template invalid charts/typemill --set-string securityMigrations.cyanineV226.image.tag=
+          expect_failure helm template invalid charts/typemill --set securityMigrations.cyanineV226.image.digest=invalid
+          expect_failure helm template invalid charts/typemill --set securityMigrations.cyanineV226.image.pullPolicy=Sometimes
           expect_failure helm template invalid charts/typemill --set tests.image.digest=invalid
+          expect_failure helm template invalid charts/typemill --set-string typemill.proxyDetection=invalid
           expect_failure helm template invalid charts/typemill --set readinessProbe.path=tm/login
           expect_failure helm template invalid charts/typemill --set-string 'typemill.phpIniConfig.bad\.conf=value'
           expect_failure helm template invalid charts/typemill --set ingress.enabled=true --set-json 'ingress.hosts=[]'
@@ -108,9 +122,13 @@ jobs:
         if: steps.list-changed.outputs.changed == 'true'
         uses: helm/kind-action@v1.14.0
 
-      - name: Run chart-testing (install)
+      - name: Run chart-testing (install and upgrade)
         if: steps.list-changed.outputs.changed == 'true'
-        run: ct install --target-branch ${{ github.event.repository.default_branch }}
+        run: >-
+          ct install
+          --config .github/ct.yaml
+          --target-branch ${{ github.event.repository.default_branch }}
+          --upgrade
 
       - name: Validate rendered resources against Kubernetes API
         if: steps.list-changed.outputs.changed == 'true'

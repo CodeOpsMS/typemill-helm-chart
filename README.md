@@ -85,16 +85,25 @@ ingress:
 
 ## First-Time Setup
 
-1. Deploy Typemill (without TLS for first setup)
-2. Access your Typemill URL — the setup wizard will guide you through creating an admin user
-3. If using a reverse proxy with TLS: Navigate to **Settings → System → Proxy** and enable "Use X-Forwarded Headers"
-4. Upgrade your deployment with TLS enabled
+1. Keep the Ingress disabled and reach the setup wizard through an authenticated
+   administration path such as `kubectl port-forward`, or configure HTTPS, proxy
+   detection, and the exact trusted proxy source IPs before exposing the site.
+2. Access `/tm/setup` and create the admin user. Do not submit setup credentials over
+   an unencrypted public HTTP endpoint.
+3. When using a reverse proxy, set `typemill.proxyDetection=true`, configure its exact
+   source IPs under **Settings → System → Trusted IPs for proxies**, and verify HTTPS
+   links and redirects before opening the site to users. The login response should set a
+   `__Secure-typemill-session` cookie with the `Secure` attribute; a plain
+   `typemill-session` cookie means HTTPS proxy detection is not effective.
 
 ## Migrating from an Existing Installation
 
 Create a backup of your existing **settings**, **content**, **media**, **plugins**, **themes**, and **data** directories.
 Copy them into the PVC of the new Typemill deployment.
-If deploying behind a proxy with TLS, edit `settings/settings.yaml` and change `proxy: false` to `proxy: true`.
+If deploying behind a proxy with TLS, configure `trustedproxies` in
+`settings/settings.yaml` or through the admin UI. For a subpath deployment the proxy
+must also send `X-Forwarded-Prefix`. The chart defaults `typemill.proxyDetection=false`
+to neutralize the image's trust-all default; a persisted `proxy: true` remains active.
 
 ## Automation
 

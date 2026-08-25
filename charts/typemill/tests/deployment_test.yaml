@@ -29,7 +29,7 @@ tests:
     asserts:
       - equal:
           path: spec.template.spec.containers[0].image
-          value: kixote/typemill:v2.25.0
+          value: kixote/typemill:v2.26.2
 
   - it: should reject multiple replicas
     set:
@@ -60,6 +60,44 @@ tests:
           content:
             name: TZ
             value: "Europe/Berlin"
+
+  - it: should disable the upstream proxy-detection default safely
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TYPEMILL_PROXY_DETECTION
+            value: "false"
+
+  - it: should allow upstream proxy detection to be enabled explicitly
+    set:
+      typemill.proxyDetection: true
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TYPEMILL_PROXY_DETECTION
+            value: "true"
+
+  - it: should keep proxy detection disabled when ingress is enabled without an explicit opt-in
+    set:
+      ingress.enabled: true
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TYPEMILL_PROXY_DETECTION
+            value: "false"
+
+  - it: should fail closed when old reused values have no proxy-detection key
+    set:
+      typemill.proxyDetection: null
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TYPEMILL_PROXY_DETECTION
+            value: "false"
 
   - it: should mount persistent volumes when persistence is enabled
     set:

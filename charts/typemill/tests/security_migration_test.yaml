@@ -1,0 +1,164 @@
+suite: Cyanine v2.26 security migration tests
+templates:
+  - templates/deployment.yaml
+release:
+  name: test-release
+  namespace: test-ns
+tests:
+  - it: should render the hash-guarded migration by default with persistence
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].name
+          value: cyanine-v226-security-migration
+      - equal:
+          path: spec.template.spec.initContainers[0].image
+          value: kixote/typemill@sha256:628f79a08cc75bc07777ae4b95312fb9770a531645789e698f12f96de6624156
+      - equal:
+          path: spec.template.spec.initContainers[0].env[0].value
+          value: "false"
+      - equal:
+          path: spec.template.spec.initContainers[0].securityContext.runAsUser
+          value: 33
+      - equal:
+          path: spec.template.spec.initContainers[0].securityContext.runAsGroup
+          value: 33
+      - equal:
+          path: spec.template.spec.initContainers[0].securityContext.runAsNonRoot
+          value: true
+      - equal:
+          path: spec.template.spec.initContainers[0].securityContext.readOnlyRootFilesystem
+          value: true
+      - equal:
+          path: spec.template.spec.initContainers[0].securityContext.allowPrivilegeEscalation
+          value: false
+      - contains:
+          path: spec.template.spec.initContainers[0].securityContext.capabilities.drop
+          content: ALL
+      - contains:
+          path: spec.template.spec.initContainers[0].volumeMounts
+          content:
+            name: typemill-data
+            mountPath: /work/themes
+            subPath: themes
+      - matchRegex:
+          path: spec.template.spec.initContainers[0].command[2]
+          pattern: 'process_file scan blog\.twig 3328ab536a75379f.*71a885d3aaeb3dce'
+      - matchRegex:
+          path: spec.template.spec.initContainers[0].command[2]
+          pattern: 'process_file scan home/landingpageNews\.twig e5b85ecae171eba9.*2b3a49c379bade6f'
+      - matchRegex:
+          path: spec.template.spec.initContainers[0].command[2]
+          pattern: 'process_file scan landingpage\.twig b49df2d3b6be481a.*6eb5fdd81f0db06a'
+      - matchRegex:
+          path: spec.template.spec.initContainers[0].command[2]
+          pattern: 'process_file scan partials/posts\.twig 2f88c75ba90abe87.*5aecdf8d3e810236'
+      - matchRegex:
+          path: spec.template.spec.initContainers[0].command[2]
+          pattern: 'process_file scan cyanine\.yaml fdcf0f9e229e6f9c.*4dfb48aa2f39fbb3'
+      - matchRegex:
+          path: spec.template.spec.initContainers[0].command[2]
+          pattern: 'preserving customized.*security changes manually'
+      - matchRegex:
+          path: spec.template.spec.initContainers[0].command[2]
+          pattern: 'preserving symbolic link.*manual security review'
+      - matchRegex:
+          path: spec.template.spec.initContainers[0].command[2]
+          pattern: 'cannot read or traverse.*id -u.*id -g'
+      - matchRegex:
+          path: spec.template.spec.initContainers[0].command[2]
+          pattern: 'mktemp.*typemill-v226\.XXXXXX'
+      - matchRegex:
+          path: spec.template.spec.initContainers[0].command[2]
+          pattern: 'mv -f.*target_file'
+      - matchRegex:
+          path: spec.template.spec.initContainers[0].command[2]
+          pattern: '(?s)process_file scan cyanine\.yaml.*TYPEMILL_FAIL_ON_MODIFIED.*process_file apply blog\.twig'
+
+  - it: should use safe defaults when reused old values omit the migration tree
+    set:
+      securityMigrations: null
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].name
+          value: cyanine-v226-security-migration
+      - equal:
+          path: spec.template.spec.initContainers[0].image
+          value: kixote/typemill@sha256:628f79a08cc75bc07777ae4b95312fb9770a531645789e698f12f96de6624156
+      - equal:
+          path: spec.template.spec.initContainers[0].env[0].value
+          value: "false"
+      - equal:
+          path: spec.template.spec.initContainers[0].securityContext.runAsUser
+          value: 33
+
+  - it: should omit the migration without persistence
+    set:
+      persistence.enabled: false
+    asserts:
+      - isNull:
+          path: spec.template.spec.initContainers
+
+  - it: should allow the migration to be disabled
+    set:
+      securityMigrations.cyanineV226.enabled: false
+    asserts:
+      - isNull:
+          path: spec.template.spec.initContainers
+
+  - it: should enable strict handling of customized files
+    set:
+      securityMigrations.cyanineV226.failOnModified: true
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].env[0].value
+          value: "true"
+
+  - it: should support an explicitly tagged dedicated migration source
+    set:
+      securityMigrations.cyanineV226.image.repository: registry.example/typemill-migration
+      securityMigrations.cyanineV226.image.tag: v2.26.0-reviewed
+      securityMigrations.cyanineV226.image.digest: ""
+      securityMigrations.cyanineV226.image.pullPolicy: Always
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].image
+          value: registry.example/typemill-migration:v2.26.0-reviewed
+      - equal:
+          path: spec.template.spec.initContainers[0].imagePullPolicy
+          value: Always
+
+  - it: should render the security migration before the ai bootstrap
+    set:
+      ai.enabled: true
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].name
+          value: cyanine-v226-security-migration
+      - equal:
+          path: spec.template.spec.initContainers[1].name
+          value: ai-config
+
+  - it: should render custom migration resources and security context
+    set:
+      securityMigrations.cyanineV226.securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+      securityMigrations.cyanineV226.resources:
+        requests:
+          cpu: 20m
+          memory: 32Mi
+        limits:
+          memory: 64Mi
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].securityContext.runAsUser
+          value: 1000
+      - equal:
+          path: spec.template.spec.initContainers[0].securityContext.runAsGroup
+          value: 1000
+      - equal:
+          path: spec.template.spec.initContainers[0].resources.requests.cpu
+          value: 20m
+      - equal:
+          path: spec.template.spec.initContainers[0].resources.limits.memory
+          value: 64Mi

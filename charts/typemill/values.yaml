@@ -157,6 +157,30 @@ strategy:
 # -- Termination grace period in seconds
 terminationGracePeriodSeconds: 60
 
+securityMigrations:
+  cyanineV226:
+    # -- Update unchanged persisted Cyanine v2.24.2/v2.25 stock files to the v2.26 security-fixed versions.
+    enabled: true
+    # -- Fail pod startup whenever affected Cyanine files do not match verified stock hashes.
+    failOnModified: false
+    # -- Immutable v2.26.0 application image used only as the source of the verified fixed files.
+    # Keep this independent from image.* so later Typemill upgrades cannot change the migration input.
+    image:
+      repository: kixote/typemill
+      tag: v2.26.0
+      digest: "sha256:628f79a08cc75bc07777ae4b95312fb9770a531645789e698f12f96de6624156"
+      pullPolicy: IfNotPresent
+    securityContext:
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      runAsNonRoot: true
+      runAsUser: 33
+      runAsGroup: 33
+      capabilities:
+        drop:
+          - ALL
+    resources: {}
+
 persistence:
   # -- Enable persistence for Typemill data
   enabled: true
@@ -217,6 +241,11 @@ typemill:
   # -- Timezone for the container (TZ database format)
   timezone: "UTC"
 
+  # -- Force Typemill's reverse-proxy detection through the upstream Docker environment variable.
+  # The chart explicitly disables the v2.26.1 image default to avoid trusting forwarded
+  # headers unexpectedly. A persisted `proxy: true` setting remains active.
+  proxyDetection: false
+
   # -- PHP INI configuration overrides. Each key becomes a file in /usr/local/etc/php/conf.d/
   phpIniConfig:
     typemill-recommended.ini: |
@@ -241,7 +270,7 @@ tests:
     # -- Container image tag for the Helm connectivity test
     tag: "1.38.0"
     # -- Immutable multi-platform digest for the Helm connectivity test image
-    digest: "sha256:fd8d9aa63ba2f0982b5304e1ee8d3b90a210bc1ffb5314d980eb6962f1a9715d"
+    digest: "sha256:dc2d74b28e4cf8984fa52af1f39bc7c3d9c73760b41a74d629f5d11b1ab28616"
     # -- Image pull policy for the Helm connectivity test
     pullPolicy: IfNotPresent
   # -- Resource requests and limits for the Helm connectivity test
