@@ -63,15 +63,94 @@ jobs:
             echo "update=false" >> "$GITHUB_OUTPUT"
           else
             echo "Update available: $CURRENT_VERSION@$CURRENT_DIGEST → $LATEST_TAG@$LATEST_DIGEST"
-            echo "update=true" >> "$GITHUB_OUTPUT"
-            echo "new_tag=$LATEST_TAG" >> "$GITHUB_OUTPUT"
-            echo "old_tag=$CURRENT_VERSION" >> "$GITHUB_OUTPUT"
-            echo "new_digest=$LATEST_DIGEST" >> "$GITHUB_OUTPUT"
-            echo "old_digest=$CURRENT_DIGEST" >> "$GITHUB_OUTPUT"
+            {
+              echo "update=true"
+              echo "new_tag=$LATEST_TAG"
+              echo "old_tag=$CURRENT_VERSION"
+              echo "new_digest=$LATEST_DIGEST"
+              echo "old_digest=$CURRENT_DIGEST"
+            } >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Bump chart version and update appVersion
+      - name: Preserve an existing update branch
+        id: existing-update
         if: steps.check.outputs.update == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          UPDATE_BRANCH: chore/update-typemill-${{ steps.check.outputs.new_tag }}
+          LATEST_TAG: ${{ steps.check.outputs.new_tag }}
+          LATEST_DIGEST: ${{ steps.check.outputs.new_digest }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          SKIP_UPDATE=false
+          OPEN_PULL_REQUESTS=$(gh pr list \
+            --repo "$GITHUB_REPOSITORY" \
+            --state open \
+            --limit 100 \
+            --json url,headRefName,baseRefName,isCrossRepository)
+          EXISTING_UPDATES=$(jq \
+            --arg base "$DEFAULT_BRANCH" \
+            '[.[] | select(
+              .isCrossRepository == false and
+              .baseRefName == $base and
+              (.headRefName | startswith("chore/update-typemill-v"))
+            )]' <<< "$OPEN_PULL_REQUESTS")
+          EXISTING_UPDATE_COUNT=$(jq 'length' <<< "$EXISTING_UPDATES")
+
+          if [[ "$EXISTING_UPDATE_COUNT" -gt 1 ]]; then
+            echo "ERROR: Multiple open Typemill update pull requests require manual consolidation:" >&2
+            jq -r '.[] | "  \(.headRefName): \(.url)"' <<< "$EXISTING_UPDATES" >&2
+            exit 1
+          fi
+
+          EXISTING_PR_URL=$(jq -r '.[0].url // ""' <<< "$EXISTING_UPDATES")
+          EXISTING_PR_BRANCH=$(jq -r '.[0].headRefName // ""' <<< "$EXISTING_UPDATES")
+
+          if [[ -n "$EXISTING_PR_URL" ]]; then
+            EXISTING_CHART_CONTENT=$(gh api \
+              "repos/${GITHUB_REPOSITORY}/contents/charts/typemill/Chart.yaml?ref=${EXISTING_PR_BRANCH}" \
+              --jq '.content' | base64 --decode)
+            EXISTING_VALUES_CONTENT=$(gh api \
+              "repos/${GITHUB_REPOSITORY}/contents/charts/typemill/values.yaml?ref=${EXISTING_PR_BRANCH}" \
+              --jq '.content' | base64 --decode)
+            EXISTING_TAG=$(awk '$1 == "appVersion:" {gsub(/"/, "", $2); print $2; exit}' <<< "$EXISTING_CHART_CONTENT")
+            EXISTING_DIGEST=$(awk '
+              /^image:/ { in_image=1; next }
+              in_image && /^  digest:/ { gsub(/"/, "", $2); print $2; exit }
+              in_image && /^[^ ]/ { exit }
+            ' <<< "$EXISTING_VALUES_CONTENT")
+
+            if [[ "$EXISTING_TAG" != "$LATEST_TAG" || "$EXISTING_DIGEST" != "$LATEST_DIGEST" ]]; then
+              echo "ERROR: Existing update PR is stale for mutable tag ${LATEST_TAG}." >&2
+              echo "PR: ${EXISTING_PR_BRANCH} (${EXISTING_PR_URL})" >&2
+              echo "PR pin: ${EXISTING_TAG}@${EXISTING_DIGEST}" >&2
+              echo "Registry: ${LATEST_TAG}@${LATEST_DIGEST}" >&2
+              echo "Review and update or close the existing PR; it will not be overwritten automatically." >&2
+              exit 1
+            fi
+
+            SKIP_UPDATE=true
+            echo "Preserving current update pull request: ${EXISTING_PR_BRANCH} (${EXISTING_PR_URL})"
+          else
+            if git ls-remote --exit-code --heads origin "refs/heads/$UPDATE_BRANCH" >/dev/null 2>&1; then
+              echo "ERROR: Remote update branch exists without an open pull request: $UPDATE_BRANCH" >&2
+              echo "Delete the orphaned branch or restore its pull request before retrying." >&2
+              exit 1
+            else
+              REMOTE_STATUS=$?
+              if [[ "$REMOTE_STATUS" -ne 2 ]]; then
+                echo "ERROR: Could not verify whether update branch $UPDATE_BRANCH exists." >&2
+                exit "$REMOTE_STATUS"
+              fi
+            fi
+          fi
+
+          echo "skip=$SKIP_UPDATE" >> "$GITHUB_OUTPUT"
+
+      - name: Bump chart version and update appVersion
+        if: >-
+          steps.check.outputs.update == 'true' &&
+          steps.existing-update.outputs.skip != 'true'
         run: |
           NEW_TAG="${{ steps.check.outputs.new_tag }}"
           OLD_TAG="${{ steps.check.outputs.old_tag }}"
@@ -91,15 +170,44 @@ jobs:
           # Keep the default deployment immutable and in sync with appVersion.
           sed -i "0,/^  digest: .*/s//  digest: \"${NEW_DIGEST}\"/" charts/typemill/values.yaml
 
-          # Update image annotation in Chart.yaml
-          sed -i "s|image: kixote/typemill:.*|image: kixote/typemill:${NEW_TAG}|" charts/typemill/Chart.yaml
+          # Update only the current application image annotation. The dedicated
+          # v2.26.0 security-migration source must remain independently pinned.
+          awk -v tag="$NEW_TAG" '
+            $0 == "    - name: typemill" { in_current_image=1 }
+            in_current_image && /^      image: kixote\/typemill:/ {
+              print "      image: kixote/typemill:" tag
+              in_current_image=0
+              next
+            }
+            { print }
+          ' charts/typemill/Chart.yaml > charts/typemill/Chart.yaml.tmp
+          mv charts/typemill/Chart.yaml.tmp charts/typemill/Chart.yaml
 
-          # Keep release-specific documentation and the default-image unit test
-          # in sync with the values and chart metadata.
-          for DOC_FILE in README.md charts/typemill/README.md; do
-            sed -i "s/${OLD_TAG}/${NEW_TAG}/g" "$DOC_FILE"
-          done
+          # Keep only generic current-image documentation in sync. Historical
+          # release and security-migration sections require manual review.
+          sed -i -E \
+            "s/(image for Typemill )v[0-9]+\.[0-9]+\.[0-9]+( currently supports)/\1${NEW_TAG}\2/" \
+            README.md
+          sed -i -E \
+            "s/(upstream Typemill )v[0-9]+\.[0-9]+\.[0-9]+( image)/\1${NEW_TAG}\2/" \
+            charts/typemill/README.md
+          sed -i -E \
+            "s/(default Typemill image is pinned to the verified )v[0-9]+\.[0-9]+\.[0-9]+/\1${NEW_TAG}/" \
+            charts/typemill/README.md
+          sed -i -E \
+            "s/^(  tag: )v[0-9]+\.[0-9]+\.[0-9]+/\1${NEW_TAG}/" \
+            charts/typemill/README.md
+          sed -i -E \
+            "s/(--set image\.tag=)v[0-9]+\.[0-9]+\.[0-9]+/\1${NEW_TAG}/" \
+            charts/typemill/README.md
+          sed -i -E \
+            "s/(replace it with the )v[0-9]+\.[0-9]+\.[0-9]+( digest)/\1${NEW_TAG}\2/" \
+            charts/typemill/README.md
+          sed -i -E \
+            "s/^(  --version )[0-9]+\.[0-9]+\.[0-9]+/\1${NEW_CHART_VERSION}/" \
+            charts/typemill/README.md
           sed -i "s/${OLD_DIGEST}/${NEW_DIGEST}/g" charts/typemill/tests/deployment_test.yaml
+          sed -i "s/${OLD_TAG}/${NEW_TAG}/g" charts/typemill/tests/deployment_test.yaml
 
           # Security metadata belongs to a specific upstream release. Automated
           # image bumps start neutral and can be marked explicitly during review.
@@ -120,15 +228,19 @@ jobs:
           ' charts/typemill/Chart.yaml > charts/typemill/Chart.yaml.tmp
           mv charts/typemill/Chart.yaml.tmp charts/typemill/Chart.yaml
 
-          echo "NEW_CHART_VERSION=$NEW_CHART_VERSION" >> "$GITHUB_ENV"
-          echo "NEW_TAG=$NEW_TAG" >> "$GITHUB_ENV"
-          echo "OLD_TAG=$OLD_TAG" >> "$GITHUB_ENV"
-          echo "NEW_DIGEST=$NEW_DIGEST" >> "$GITHUB_ENV"
-          echo "OLD_DIGEST=$OLD_DIGEST" >> "$GITHUB_ENV"
+          {
+            echo "NEW_CHART_VERSION=$NEW_CHART_VERSION"
+            echo "NEW_TAG=$NEW_TAG"
+            echo "OLD_TAG=$OLD_TAG"
+            echo "NEW_DIGEST=$NEW_DIGEST"
+            echo "OLD_DIGEST=$OLD_DIGEST"
+          } >> "$GITHUB_ENV"
 
       - name: Create update pull request
         id: create-pull-request
-        if: steps.check.outputs.update == 'true'
+        if: >-
+          steps.check.outputs.update == 'true' &&
+          steps.existing-update.outputs.skip != 'true'
         uses: peter-evans/create-pull-request@v8
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -143,11 +255,14 @@ jobs:
             - Image digest: `${{ env.OLD_DIGEST }}` → `${{ env.NEW_DIGEST }}`
             - Chart version: `${{ env.NEW_CHART_VERSION }}`
 
+            Upstream release notes and security metadata require manual review.
             Publishing is intentionally handled only by `release.yml` after this PR is merged.
           reviewers: CodeOpsMS
 
       - name: Verify update pull request was created
-        if: steps.check.outputs.update == 'true'
+        if: >-
+          steps.check.outputs.update == 'true' &&
+          steps.existing-update.outputs.skip != 'true'
         env:
           PR_NUMBER: ${{ steps.create-pull-request.outputs.pull-request-number }}
           PR_URL: ${{ steps.create-pull-request.outputs.pull-request-url }}
@@ -160,9 +275,12 @@ jobs:
           echo "Created pull request #${PR_NUMBER}: ${PR_URL}"
 
       # Pull requests created with GITHUB_TOKEN do not emit another pull_request
-      # event. Dispatch validation explicitly so automated updates still run CI.
+      # event. Dispatch validation explicitly when the branch content changed,
+      # but do not repeat the same run on every scheduled check.
       - name: Dispatch chart validation
-        if: steps.check.outputs.update == 'true'
+        if: >-
+          steps.create-pull-request.outputs.pull-request-operation == 'created' ||
+          steps.create-pull-request.outputs.pull-request-operation == 'updated'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           UPDATE_BRANCH: chore/update-typemill-${{ env.NEW_TAG }}

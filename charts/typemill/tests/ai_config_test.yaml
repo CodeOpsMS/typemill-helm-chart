@@ -4,6 +4,8 @@ templates:
 release:
   name: test-release
   namespace: test-ns
+set:
+  securityMigrations.cyanineV226.enabled: false
 tests:
   - it: should not render ai init container by default
     asserts:
@@ -188,12 +190,17 @@ tests:
     asserts:
       - lengthEqual:
           path: spec.template.spec.containers[0].env
-          count: 1
+          count: 2
       - contains:
           path: spec.template.spec.containers[0].env
           content:
             name: TZ
             value: UTC
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TYPEMILL_PROXY_DETECTION
+            value: "false"
       - notContains:
           path: spec.template.spec.containers[0].env
           content:

@@ -255,6 +255,65 @@
       "minimum": 0,
       "description": "Termination grace period in seconds"
     },
+    "securityMigrations": {
+      "type": "object",
+      "description": "Security migrations for persisted upstream application files",
+      "properties": {
+        "cyanineV226": {
+          "type": "object",
+          "description": "Hash-guarded migration of affected Cyanine v2.24.2/v2.25 files to v2.26",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Update unchanged Cyanine v2.24.2/v2.25 stock files to their v2.26 security-fixed versions"
+            },
+            "failOnModified": {
+              "type": "boolean",
+              "description": "Fail pod startup whenever affected Cyanine files do not match verified stock hashes"
+            },
+            "image": {
+              "type": "object",
+              "description": "Immutable Typemill v2.26 image used as the migration source",
+              "properties": {
+                "repository": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "tag": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "digest": {
+                  "type": "string",
+                  "pattern": "^$|^sha256:[a-f0-9]{64}$"
+                },
+                "pullPolicy": {
+                  "type": "string",
+                  "enum": [
+                    "Always",
+                    "IfNotPresent",
+                    "Never"
+                  ]
+                }
+              },
+              "required": [
+                "repository",
+                "tag",
+                "pullPolicy"
+              ]
+            },
+            "securityContext": {
+              "type": "object",
+              "description": "Security context for the Cyanine migration init container"
+            },
+            "resources": {
+              "type": "object",
+              "description": "Resource requests and limits for the Cyanine migration init container"
+            }
+          }
+        }
+      }
+    },
     "persistence": {
       "type": "object",
       "properties": {
@@ -384,6 +443,10 @@
         "timezone": {
           "type": "string",
           "description": "Timezone (TZ database format, e.g. UTC, Europe/Berlin)"
+        },
+        "proxyDetection": {
+          "type": "boolean",
+          "description": "Force Typemill reverse-proxy detection through TYPEMILL_PROXY_DETECTION. False stops the image-level force; a persisted proxy setting still applies."
         },
         "phpIniConfig": {
           "type": "object",

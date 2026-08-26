@@ -28,7 +28,7 @@ Use it for handbooks, documentations, manuals, web-novels, traditional websites,
 | **Source** | [GitHub](https://github.com/CodeOpsMS/typemill-helm-chart) |
 | **OCI Registry** | `ghcr.io/codeopsms/helm-charts/typemill` |
 
-The upstream `kixote/typemill` image for Typemill v2.25.0 currently supports Linux/amd64.
+The upstream `kixote/typemill` image for Typemill v2.26.2 currently supports Linux/amd64.
 
 ## Prerequisites
 
@@ -61,6 +61,31 @@ helm install typemill typemill/typemill -f my-values.yaml --namespace typemill -
 
 See [charts/typemill/README.md](charts/typemill/README.md) for the full parameter reference.
 
+## Upgrade notice for Typemill v2.26.x
+
+Chart 2.2.0 is not a blanket Helm values/API breaking release, but upgrades from v2.25
+require review of persisted security and proxy state:
+
+- **XSS:** The new image contains the upstream fixes, but customized persisted Cyanine
+  templates are never overwritten. Review preserved files against the upstream patch;
+  otherwise the pod can start while the vulnerability remains.
+- **Cyanine:** Verified old stock files are migrated automatically. Custom or missing files
+  are preserved with warnings. Keep `securityMigrations.cyanineV226.failOnModified=false`
+  until all custom files are reviewed; `true` intentionally blocks startup and leaves a
+  `Recreate` deployment offline when any affected file has an unknown hash.
+- **Proxy:** The chart neutralizes the new image-level proxy-detection default, but a
+  persisted `proxy: true` remains active. Configure the exact immediate proxy IPs in
+  `trustedproxies` and verify a `__Secure-typemill-session; Secure` login cookie before
+  production rollout.
+- **PHP compatibility:** The actual runtime compatibility break is the move to PHP 8.5
+  and removal of PHP 8.1 support. Validate every persisted third-party plugin under PHP
+  8.5 before rollout.
+- **Helm command:** Do not use plain `--reuse-values`; it can retain the v2.25 image
+  digest. Use `--reset-then-reuse-values` where supported and verify the rendered image.
+
+See the [v2.26.x upgrade classification](charts/typemill/README.md#typemill-v226x-upgrade-classification)
+for failure modes and the complete upgrade procedure.
+
 ## Quick Start Values
 
 ```yaml
@@ -85,16 +110,25 @@ ingress:
 
 ## First-Time Setup
 
-1. Deploy Typemill (without TLS for first setup)
-2. Access your Typemill URL — the setup wizard will guide you through creating an admin user
-3. If using a reverse proxy with TLS: Navigate to **Settings → System → Proxy** and enable "Use X-Forwarded Headers"
-4. Upgrade your deployment with TLS enabled
+1. Keep the Ingress disabled and reach the setup wizard through an authenticated
+   administration path such as `kubectl port-forward`, or configure HTTPS, proxy
+   detection, and the exact trusted proxy source IPs before exposing the site.
+2. Access `/tm/setup` and create the admin user. Do not submit setup credentials over
+   an unencrypted public HTTP endpoint.
+3. When using a reverse proxy, set `typemill.proxyDetection=true`, configure its exact
+   source IPs under **Settings → System → Trusted IPs for proxies**, and verify HTTPS
+   links and redirects before opening the site to users. The login response should set a
+   `__Secure-typemill-session` cookie with the `Secure` attribute; a plain
+   `typemill-session` cookie means HTTPS proxy detection is not effective.
 
 ## Migrating from an Existing Installation
 
 Create a backup of your existing **settings**, **content**, **media**, **plugins**, **themes**, and **data** directories.
 Copy them into the PVC of the new Typemill deployment.
-If deploying behind a proxy with TLS, edit `settings/settings.yaml` and change `proxy: false` to `proxy: true`.
+If deploying behind a proxy with TLS, configure `trustedproxies` in
+`settings/settings.yaml` or through the admin UI. For a subpath deployment the proxy
+must also send `X-Forwarded-Prefix`. The chart defaults `typemill.proxyDetection=false`
+to neutralize the image's trust-all default; a persisted `proxy: true` remains active.
 
 ## Automation
 

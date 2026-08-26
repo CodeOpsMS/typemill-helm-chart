@@ -4,8 +4,8 @@ description: >-
   Helm chart for Typemill - a lightweight open-source flat-file CMS
   for creating websites and eBooks from Markdown.
 type: application
-version: 2.1.0
-appVersion: "v2.25.0"
+version: 2.2.0
+appVersion: "v2.26.2"
 kubeVersion: ">=1.19.0-0"
 keywords:
   - typemill
@@ -30,18 +30,28 @@ annotations:
   artifacthub.io/containsSecurityUpdates: "true"
   artifacthub.io/changes: |
     - kind: security
-      description: Update Typemill to v2.25.0 with the 2FA brute-force protection bypass fix
+      description: Fix unauthorized media downloads and XSS vulnerabilities in inline links and hero image alt text; customized persisted Cyanine templates require manual patch review
     - kind: added
-      description: Add configurable AI request timeout and reasoning-effort bootstrap values
+      description: Add a default-enabled, hash-guarded Cyanine PVC migration that replaces verified stock files and preserves custom files with warnings
     - kind: changed
-      description: Pin the Typemill, AI bootstrap, and Helm test images to verified OCI index digests
+      description: "Upgrade action: customized or missing Cyanine files are preserved; failOnModified=true blocks pod startup until every affected file has an attested v2.26 hash"
     - kind: changed
-      description: Correct the BusyBox 1.38.0 tag and digest mismatch in the Helm connectivity test
+      description: Update Typemill to v2.26.2, including news and blog date sorting, reverse-proxy subpath handling, SMTP username validation, PHP 8.5 compatibility fixes, setup directory creation, and the corrected PHP 8.2 setup requirement
+    - kind: added
+      description: Expose proxyDetection with a false default that neutralizes the upstream image default without overriding persisted proxy settings
+    - kind: changed
+      description: "Upgrade action: the chart neutralizes the new image proxy-detection default, but persisted proxy=true remains active and requires exact trusted proxy IPs plus Secure-cookie verification"
+    - kind: changed
+      description: "BREAKING compatibility: Move the upstream container runtime to PHP 8.5 and drop PHP 8.1 support; verify persisted third-party plugins before rollout"
+    - kind: changed
+      description: Refresh the BusyBox 1.38.0 index digest after its upstream tag was republished
     - kind: fixed
-      description: Keep successful Helm test pods available long enough for helm test --logs
+      description: Fix user profile image handling and filenames without Typemill prefixes
   artifacthub.io/images: |
     - name: typemill
-      image: kixote/typemill:v2.25.0
+      image: kixote/typemill:v2.26.2
+    - name: typemill-cyanine-v226-migration
+      image: kixote/typemill:v2.26.0
     - name: yq
       image: mikefarah/yq:4.53.3
     - name: busybox

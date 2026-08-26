@@ -74,6 +74,28 @@ over image.tag for immutable image pinning.
 {{- end }}
 
 {{/*
+Return the immutable Typemill v2.26 image used as the Cyanine security-migration
+source. Defaults are repeated here so upgrades with --reuse-values remain safe
+when the previous release did not yet contain securityMigrations values.
+*/}}
+{{- define "typemill.cyanineV226MigrationImage" -}}
+{{- $securityMigrations := .Values.securityMigrations | default dict -}}
+{{- $cyanineV226 := get $securityMigrations "cyanineV226" | default dict -}}
+{{- $image := get $cyanineV226 "image" | default dict -}}
+{{- $repository := get $image "repository" | default "kixote/typemill" -}}
+{{- $tag := get $image "tag" | default "v2.26.0" -}}
+{{- $digest := "sha256:628f79a08cc75bc07777ae4b95312fb9770a531645789e698f12f96de6624156" -}}
+{{- if hasKey $image "digest" -}}
+{{- $digest = get $image "digest" -}}
+{{- end -}}
+{{- if $digest -}}
+{{- printf "%s@%s" $repository $digest -}}
+{{- else -}}
+{{- printf "%s:%s" $repository $tag -}}
+{{- end -}}
+{{- end }}
+
+{{/*
 Return the AI bootstrap init-container image reference. If digest is set, it takes
 precedence over tag for immutable image pinning.
 */}}

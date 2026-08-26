@@ -11,55 +11,66 @@ render_images() {
     --namespace typemill-image-pin-check \
     --set ai.enabled=true \
     "$@" \
-    | awk '$1 == "image:" { gsub(/"/, "", $2); print $2 }' \
+    | awk '
+        /^[[:space:]]*- name:/ { name=$3; gsub(/"/, "", name) }
+        $1 == "image:" { gsub(/"/, "", $2); print name "|" $2 }
+      ' \
     | sort -u
 }
 
 pinned_images=$(render_images)
 tagged_images=$(render_images \
   --set-string image.digest= \
+  --set-string securityMigrations.cyanineV226.image.digest= \
   --set-string ai.initContainer.image.digest= \
   --set-string tests.image.digest=)
 
-if [[ $(printf '%s\n' "$pinned_images" | sed '/^$/d' | wc -l | tr -d ' ') -ne 3 ]]; then
-  echo "Expected exactly three default pinned images, rendered:" >&2
+if [[ $(printf '%s\n' "$pinned_images" | sed '/^$/d' | wc -l | tr -d ' ') -ne 4 ]]; then
+  echo "Expected exactly four default pinned container images, rendered:" >&2
   printf '%s\n' "$pinned_images" >&2
   exit 1
 fi
 
-if [[ $(printf '%s\n' "$tagged_images" | sed '/^$/d' | wc -l | tr -d ' ') -ne 3 ]]; then
-  echo "Expected exactly three default tagged images, rendered:" >&2
+if [[ $(printf '%s\n' "$tagged_images" | sed '/^$/d' | wc -l | tr -d ' ') -ne 4 ]]; then
+  echo "Expected exactly four default tagged container images, rendered:" >&2
   printf '%s\n' "$tagged_images" >&2
   exit 1
 fi
 
-verify_repository() {
+verify_container() {
   local name=$1
-  local repository=$2
-  local api_repository=$repository
+  local container_name=$2
   local tagged_reference
   local pinned_reference
 
-  tagged_reference=$(printf '%s\n' "$tagged_images" | grep -F "${repository}:" || true)
-  pinned_reference=$(printf '%s\n' "$pinned_images" | grep -F "${repository}@" || true)
+  tagged_reference=$(printf '%s\n' "$tagged_images" | awk -F '|' -v container="$container_name" '$1 == container { print $2 }')
+  pinned_reference=$(printf '%s\n' "$pinned_images" | awk -F '|' -v container="$container_name" '$1 == container { print $2 }')
 
   if [[ $(printf '%s\n' "$tagged_reference" | sed '/^$/d' | wc -l | tr -d ' ') -ne 1 ]]; then
-    echo "${name}: expected one rendered tag reference for ${repository}, got: ${tagged_reference}" >&2
+    echo "${name}: expected one rendered tag reference for container ${container_name}, got: ${tagged_reference}" >&2
     return 1
   fi
   if [[ $(printf '%s\n' "$pinned_reference" | sed '/^$/d' | wc -l | tr -d ' ') -ne 1 ]]; then
-    echo "${name}: expected one rendered digest reference for ${repository}, got: ${pinned_reference}" >&2
+    echo "${name}: expected one rendered digest reference for container ${container_name}, got: ${pinned_reference}" >&2
     return 1
   fi
 
-  local tag=${tagged_reference#"${repository}:"}
-  local expected=${pinned_reference#"${repository}@"}
+  local repository=${tagged_reference%:*}
+  local tag=${tagged_reference##*:}
+  local pinned_repository=${pinned_reference%@*}
+  local expected=${pinned_reference#*@}
+
+  if [[ "$repository" != "$pinned_repository" ]]; then
+    echo "${name}: tagged and pinned repositories differ: ${repository} != ${pinned_repository}" >&2
+    return 1
+  fi
 
   if [[ ! "$expected" =~ ^sha256:[0-9a-f]{64}$ ]]; then
     echo "${name}: configured digest is missing or invalid: ${expected}" >&2
     return 1
   fi
 
+  local api_repository=$repository
   if [[ "$api_repository" != */* ]]; then
     api_repository="library/${api_repository}"
   fi
@@ -86,6 +97,7 @@ verify_repository() {
   echo "${name}: verified ${repository}:${tag}@${expected}"
 }
 
-verify_repository "Typemill" "kixote/typemill"
-verify_repository "AI bootstrap" "mikefarah/yq"
-verify_repository "Helm test" "busybox"
+verify_container "Typemill" "typemill"
+verify_container "Cyanine v2.26 migration" "cyanine-v226-security-migration"
+verify_container "AI bootstrap" "ai-config"
+verify_container "Helm test" "wget"
