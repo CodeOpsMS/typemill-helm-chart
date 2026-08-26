@@ -436,6 +436,23 @@ Each Typemill user still has to agree to the selected AI provider in the Kixote 
 
 ## Upgrading
 
+### Typemill v2.26.x upgrade classification
+
+This release requires operator review, but the XSS fix, Cyanine migration, and proxy
+change are not the same kind of breaking change:
+
+| Area | Classification | What happens during the upgrade | Required action / failure mode |
+|------|----------------|---------------------------------|--------------------------------|
+| XSS fixes | Security update, not a Helm values/API break | The v2.26 application image contains the fixes. On a persisted Cyanine theme, the chart can update only files whose hashes match verified v2.24.2/v2.25 stock files. Customized or missing files are preserved. | Compare every preserved affected template with the [upstream XSS patch](https://github.com/typemill/typemill/commit/1cd145923f882b5f4ed1b6c3600240416a3e579c). With `failOnModified=false` the pod starts, but an unpatched custom file can leave the vulnerability present. |
+| Cyanine migration | Persistent-state migration; conditionally startup-blocking | Before Typemill starts, the init container atomically replaces attested old stock files, leaves current files unchanged, and warns about custom state. Replaced files use mode `0644` and the migration UID/GID. | Back up the PVC and inspect the migration log. Keep `failOnModified=false` while reviewed custom files have non-stock hashes. Setting it to `true` deliberately blocks startup before any replacement if one affected path is not attested; with `Recreate`, the site then remains offline. |
+| Proxy configuration | Runtime/configuration compatibility change | The upstream v2.26.1+ image enables proxy detection by default. Chart 2.2.0 neutralizes only that image default with `typemill.proxyDetection=false`; a persisted `proxy: true` setting still wins. Typemill accepts only exact IP literals in `trustedproxies`. | Configure the stable, immediate proxy source IPs and verify the public login cookie is `__Secure-typemill-session; Secure`. A wrong trust path can cause insecure cookies or broken subpath handling; an empty trust list permits forwarded-header spoofing from any source that can reach the pod unless NetworkPolicy provides equivalent isolation. |
+| PHP runtime | Breaking plugin/runtime compatibility change | The upstream container moves from PHP 8.3 to PHP 8.5 and no longer supports PHP 8.1. Persisted plugins are not upgraded by the chart. | Syntax-check and functionally test every third-party plugin under PHP 8.5 before production rollout. Deprecation warnings do not necessarily stop startup, but removed or stricter PHP behavior can break a plugin at runtime. |
+| Helm value reuse | Upgrade-command hazard, not an application break | Plain `--reuse-values` can retain the v2.25 image digest even though Helm records Chart 2.2.0. | Prefer `--reset-then-reuse-values` with Helm 3.14+, or `--reset-values` plus all intentional overrides, and verify the rendered v2.26.2 digest before rollout. |
+
+In other words, this is not a blanket configuration-format break. It is an
+**upgrade-action-required** release because persisted theme and proxy state can prevent
+the security fixes from becoming effective even when the new pod itself starts normally.
+
 Before every upgrade, back up the Typemill PVC or create a storage snapshot. Chart 2.2.0
 updates Typemill to v2.26.2, including the v2.26.0 media-download authorization and XSS
 fixes, the v2.26.1 date-sorting, reverse-proxy, SMTP-username, and PHP 8.5 fixes, and the

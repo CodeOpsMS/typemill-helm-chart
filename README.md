@@ -61,6 +61,31 @@ helm install typemill typemill/typemill -f my-values.yaml --namespace typemill -
 
 See [charts/typemill/README.md](charts/typemill/README.md) for the full parameter reference.
 
+## Upgrade notice for Typemill v2.26.x
+
+Chart 2.2.0 is not a blanket Helm values/API breaking release, but upgrades from v2.25
+require review of persisted security and proxy state:
+
+- **XSS:** The new image contains the upstream fixes, but customized persisted Cyanine
+  templates are never overwritten. Review preserved files against the upstream patch;
+  otherwise the pod can start while the vulnerability remains.
+- **Cyanine:** Verified old stock files are migrated automatically. Custom or missing files
+  are preserved with warnings. Keep `securityMigrations.cyanineV226.failOnModified=false`
+  until all custom files are reviewed; `true` intentionally blocks startup and leaves a
+  `Recreate` deployment offline when any affected file has an unknown hash.
+- **Proxy:** The chart neutralizes the new image-level proxy-detection default, but a
+  persisted `proxy: true` remains active. Configure the exact immediate proxy IPs in
+  `trustedproxies` and verify a `__Secure-typemill-session; Secure` login cookie before
+  production rollout.
+- **PHP compatibility:** The actual runtime compatibility break is the move to PHP 8.5
+  and removal of PHP 8.1 support. Validate every persisted third-party plugin under PHP
+  8.5 before rollout.
+- **Helm command:** Do not use plain `--reuse-values`; it can retain the v2.25 image
+  digest. Use `--reset-then-reuse-values` where supported and verify the rendered image.
+
+See the [v2.26.x upgrade classification](charts/typemill/README.md#typemill-v226x-upgrade-classification)
+for failure modes and the complete upgrade procedure.
+
 ## Quick Start Values
 
 ```yaml
