@@ -167,7 +167,7 @@ securityMigrations:
     # Keep this independent from image.* so later Typemill upgrades cannot change the migration input.
     image:
       repository: kixote/typemill
-      tag: v2.26.0
+      tag: v2.26.2
       digest: "sha256:628f79a08cc75bc07777ae4b95312fb9770a531645789e698f12f96de6624156"
       pullPolicy: IfNotPresent
     securityContext:
