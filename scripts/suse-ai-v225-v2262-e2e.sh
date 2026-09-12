@@ -12,7 +12,9 @@ WORKSPACE=${WORKSPACE:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}
 KUBE_CONTEXT=${KUBE_CONTEXT:-suseai}
 KUBECTL_BIN=${KUBECTL_BIN:-kubectl}
 HELM_BIN=${HELM_BIN:-helm}
-BASELINE_REF=${BASELINE_REF:-origin/main}
+# Keep the v2.25 upgrade baseline fixed even after newer charts merge into main.
+# Override BASELINE_REF only with another ref containing Chart 2.1.0 / v2.25.0.
+BASELINE_REF=${BASELINE_REF:-typemill-2.1.0}
 STORAGE_CLASS=${STORAGE_CLASS:-longhorn}
 PVC_SIZE=${PVC_SIZE:-1Gi}
 OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://suse-ai-ollama.suse-private-ai.svc.cluster.local:11434/v1}
