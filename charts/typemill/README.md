@@ -16,7 +16,7 @@ Docker image.
 
 - Kubernetes >= 1.19
 - Helm >= 3.8
-- Linux/amd64 nodes for the upstream Typemill v2.26.2 image
+- Linux/amd64 nodes for the upstream Typemill v2.27.0 image
 - (Optional) An Ingress controller for external access
 - (Optional) A StorageClass for persistent storage
 
@@ -180,12 +180,12 @@ The following table lists the configurable parameters of the Typemill chart and 
 
 #### Image digest pinning
 
-The default Typemill image is pinned to the verified v2.26.2 manifest digest. When `image.digest` is set, it takes precedence over `image.tag`. To use a custom tag, clear the digest explicitly:
+The default Typemill image is pinned to the verified v2.27.0 manifest digest. When `image.digest` is set, it takes precedence over `image.tag`. To use a custom tag, clear the digest explicitly:
 
 ```yaml
 image:
   repository: kixote/typemill
-  tag: v2.26.2
+  tag: v2.27.0
   digest: ""
 ```
 
@@ -482,7 +482,7 @@ supplied release values are reapplied:
 ```bash
 helm repo update
 helm upgrade my-typemill typemill/typemill \
-  --version 2.2.0 \
+  --version 2.2.1 \
   --reset-then-reuse-values
 ```
 
@@ -492,13 +492,13 @@ values file and command-line override instead:
 ```bash
 helm repo update
 helm upgrade my-typemill typemill/typemill \
-  --version 2.2.0 \
+  --version 2.2.1 \
   --reset-values \
   --values my-values.yaml
 ```
 
 Review `helm get values my-typemill` first. If `image.digest` was explicitly configured,
-replace it with the v2.26.2 digest or intentionally keep the custom pin.
+replace it with the v2.27.0 digest or intentionally keep the custom pin.
 
 Chart 2.0.0 is a major chart release because it makes previously unsafe or
 unsupported configurations explicit: Typemill is restricted to one replica,
@@ -517,7 +517,7 @@ When overriding the application with a mutable tag, clear the default digest as 
 
 ```bash
 helm upgrade my-typemill typemill/typemill \
-  --set image.tag=v2.26.2 \
+  --set image.tag=v2.27.0 \
   --set image.digest=
 ```
 
