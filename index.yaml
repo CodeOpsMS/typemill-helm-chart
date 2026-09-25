@@ -4,6 +4,73 @@ entries:
   - annotations:
       artifacthub.io/category: integration-delivery
       artifacthub.io/changes: |
+        - kind: changed
+          description: Update Typemill to v2.27.0
+        - kind: security
+          description: Fix restricted-media path variants, public article API authorization, multilingual write permissions, and SVG sanitization
+        - kind: added
+          description: Support the openai-responses AI adapter with provider defaults and existing Secret integration
+        - kind: added
+          description: Allow an empty AI temperature for provider defaults, decimal temperatures from zero to one, and output token options up to 128000
+        - kind: changed
+          description: Preserve the explicit proxy-detection default and independently pinned v2.26 Cyanine security migration
+        - kind: changed
+          description: Refresh the BusyBox 1.38.0 test image digest after the upstream tag was republished
+      artifacthub.io/containsSecurityUpdates: "true"
+      artifacthub.io/images: |
+        - name: typemill
+          image: kixote/typemill:v2.27.0
+        - name: typemill-cyanine-v226-migration
+          image: kixote/typemill:v2.26.0
+        - name: yq
+          image: mikefarah/yq:4.53.3
+        - name: busybox
+          image: busybox:1.38.0
+      artifacthub.io/license: MIT
+      artifacthub.io/links: |
+        - name: Typemill Documentation
+          url: https://docs.typemill.net/
+        - name: Typemill Source
+          url: https://github.com/typemill/typemill
+        - name: Docker Image
+          url: https://hub.docker.com/r/kixote/typemill
+        - name: support
+          url: https://github.com/codeopsms/typemill-helm-chart/issues
+      artifacthub.io/screenshots: |
+        - title: Typemill Editor
+          url: https://typemill.net/media/original/typemill-editor-072025.webp
+    apiVersion: v2
+    appVersion: v2.27.0
+    created: "2026-09-25T08:56:35.076262054Z"
+    description: Helm chart for Typemill - a lightweight open-source flat-file CMS
+      for creating websites and eBooks from Markdown.
+    digest: 739be0d53197125f1ba4f3f27fc294d6f367b53631d4507036a2cb5c496478cf
+    home: https://typemill.net
+    icon: https://typemill.net/media/live/typemill-hero-1.png
+    keywords:
+    - typemill
+    - cms
+    - flat-file
+    - markdown
+    - documentation
+    - ebook
+    - wiki
+    kubeVersion: '>=1.19.0-0'
+    maintainers:
+    - email: maintainer@example.com
+      name: codeopsms
+      url: https://github.com/codeopsms
+    name: typemill
+    sources:
+    - https://github.com/typemill/typemill
+    - https://hub.docker.com/r/kixote/typemill
+    type: application
+    urls:
+    - https://github.com/CodeOpsMS/typemill-helm-chart/releases/download/typemill-2.3.0/typemill-2.3.0.tgz
+    version: 2.3.0
+  - annotations:
+      artifacthub.io/category: integration-delivery
+      artifacthub.io/changes: |
         - kind: security
           description: Fix unauthorized media downloads and XSS vulnerabilities in inline links and hero image alt text; customized persisted Cyanine templates require manual patch review
         - kind: added
@@ -622,4 +689,4 @@ entries:
     urls:
     - https://codeopsms.github.io/typemill-helm-chart/typemill-1.0.0.tgz
     version: 1.0.0
-generated: "2026-08-26T07:32:12.327878272Z"
+generated: "2026-09-25T08:56:35.076305355Z"
