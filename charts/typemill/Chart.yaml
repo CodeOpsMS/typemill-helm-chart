@@ -4,8 +4,8 @@ description: >-
   Helm chart for Typemill - a lightweight open-source flat-file CMS
   for creating websites and eBooks from Markdown.
 type: application
-version: 2.2.0
-appVersion: "v2.26.2"
+version: 2.3.0
+appVersion: "v2.27.0"
 kubeVersion: ">=1.19.0-0"
 keywords:
   - typemill
@@ -29,27 +29,21 @@ annotations:
   artifacthub.io/category: integration-delivery
   artifacthub.io/containsSecurityUpdates: "true"
   artifacthub.io/changes: |
+    - kind: changed
+      description: Update Typemill to v2.27.0
     - kind: security
-      description: Fix unauthorized media downloads and XSS vulnerabilities in inline links and hero image alt text; customized persisted Cyanine templates require manual patch review
+      description: Fix restricted-media path variants, public article API authorization, multilingual write permissions, and SVG sanitization
     - kind: added
-      description: Add a default-enabled, hash-guarded Cyanine PVC migration that replaces verified stock files and preserves custom files with warnings
-    - kind: changed
-      description: "Upgrade action: customized or missing Cyanine files are preserved; failOnModified=true blocks pod startup until every affected file has an attested v2.26 hash"
-    - kind: changed
-      description: Update Typemill to v2.26.2, including news and blog date sorting, reverse-proxy subpath handling, SMTP username validation, PHP 8.5 compatibility fixes, setup directory creation, and the corrected PHP 8.2 setup requirement
+      description: Support the openai-responses AI adapter with provider defaults and existing Secret integration
     - kind: added
-      description: Expose proxyDetection with a false default that neutralizes the upstream image default without overriding persisted proxy settings
+      description: Allow an empty AI temperature for provider defaults, decimal temperatures from zero to one, and output token options up to 128000
     - kind: changed
-      description: "Upgrade action: the chart neutralizes the new image proxy-detection default, but persisted proxy=true remains active and requires exact trusted proxy IPs plus Secure-cookie verification"
+      description: Preserve the explicit proxy-detection default and independently pinned v2.26 Cyanine security migration
     - kind: changed
-      description: "BREAKING compatibility: Move the upstream container runtime to PHP 8.5 and drop PHP 8.1 support; verify persisted third-party plugins before rollout"
-    - kind: changed
-      description: Refresh the BusyBox 1.38.0 index digest after its upstream tag was republished
-    - kind: fixed
-      description: Fix user profile image handling and filenames without Typemill prefixes
+      description: Refresh the BusyBox 1.38.0 test image digest after the upstream tag was republished
   artifacthub.io/images: |
     - name: typemill
-      image: kixote/typemill:v2.26.2
+      image: kixote/typemill:v2.27.0
     - name: typemill-cyanine-v226-migration
       image: kixote/typemill:v2.26.0
     - name: yq
