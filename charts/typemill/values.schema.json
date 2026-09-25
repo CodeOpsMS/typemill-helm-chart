@@ -484,6 +484,7 @@
           "type": "string",
           "enum": [
             "openai",
+            "openai-responses",
             "anthropic",
             "none"
           ],
@@ -545,19 +546,8 @@
         },
         "temperature": {
           "type": "string",
-          "enum": [
-            "0.1",
-            "0.2",
-            "0.3",
-            "0.4",
-            "0.5",
-            "0.6",
-            "0.7",
-            "0.8",
-            "0.9",
-            "1.0"
-          ],
-          "description": "Typemill AI temperature setting"
+          "pattern": "^$|^(0(\\.[0-9]+)?|1(\\.0+)?)$",
+          "description": "Quoted decimal temperature from 0 to 1, or an empty string to use the provider default"
         },
         "outputTokens": {
           "type": "integer",
@@ -567,7 +557,12 @@
             6000,
             8000,
             10000,
-            12000
+            12000,
+            16000,
+            20000,
+            32000,
+            64000,
+            128000
           ],
           "description": "Typemill maximum output tokens"
         },

@@ -133,6 +133,151 @@ tests:
           content:
             name: TYPEMILL_AI_API_KEY
 
+  - it: should render responses defaults with an existing secret and provider-default temperature
+    set:
+      ai.enabled: true
+      ai.adapter: openai-responses
+      ai.existingSecret: responses-key
+      ai.secretKeys.apiKey: provider-token
+      ai.temperature: ""
+      ai.outputTokens: 128000
+      ai.reasoningEffort: high
+    asserts:
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: TYPEMILL_AI_ADAPTER
+            value: openai-responses
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: TYPEMILL_AI_BASE_URL
+            value: https://api.openai.com/v1
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: TYPEMILL_AI_MODEL
+            value: gpt-4.1
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: TYPEMILL_AI_PROVIDER_NAME
+            value: OpenAI
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: TYPEMILL_AI_TEMPERATURE
+            value: ""
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: TYPEMILL_AI_OUTPUT_TOKENS
+            value: "128000"
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: TYPEMILL_AI_REASONING_EFFORT
+            value: high
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: TYPEMILL_AI_API_KEY
+            valueFrom:
+              secretKeyRef:
+                name: responses-key
+                key: provider-token
+
+  - it: should preserve custom responses settings without a secret or legacy model fallback
+    set:
+      ai.enabled: true
+      ai.adapter: openai-responses
+      ai.service: chatgpt
+      ai.chatgptModel: ignored-legacy-model
+      ai.baseUrl: http://ai.example.svc.cluster.local:11434/v1
+      ai.model: local-model
+      ai.providerName: Local AI
+      ai.temperature: "0.0"
+      ai.outputTokens: 32000
+    asserts:
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: TYPEMILL_AI_ADAPTER
+            value: openai-responses
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: TYPEMILL_AI_BASE_URL
+            value: http://ai.example.svc.cluster.local:11434/v1
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: TYPEMILL_AI_MODEL
+            value: local-model
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: TYPEMILL_AI_PROVIDER_NAME
+            value: Local AI
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: TYPEMILL_AI_TEMPERATURE
+            value: "0.0"
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: TYPEMILL_AI_OUTPUT_TOKENS
+            value: "32000"
+      - notContains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: TYPEMILL_AI_API_KEY
+
+  - it: should prefer responses defaults and the new secret key over legacy claude settings
+    set:
+      ai.enabled: true
+      ai.adapter: openai-responses
+      ai.service: claude
+      ai.claudeModel: ignored-legacy-model
+      ai.existingSecret: responses-key
+      ai.secretKeys.claudeKey: ignored-legacy-key
+    asserts:
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: TYPEMILL_AI_ADAPTER
+            value: openai-responses
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: TYPEMILL_AI_BASE_URL
+            value: https://api.openai.com/v1
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: TYPEMILL_AI_MODEL
+            value: gpt-4.1
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: TYPEMILL_AI_API_KEY
+            valueFrom:
+              secretKeyRef:
+                name: responses-key
+                key: aiApiKey
+
+  - it: should preserve a fractional temperature as a string
+    set:
+      ai.enabled: true
+      ai.temperature: "0.25"
+    asserts:
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: TYPEMILL_AI_TEMPERATURE
+            value: "0.25"
+
   - it: should render provider defaults when optional ai fields are empty
     set:
       ai.enabled: true

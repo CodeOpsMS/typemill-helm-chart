@@ -14,7 +14,7 @@
 {{- if not $aiBaseUrl -}}
 {{- if eq $aiAdapter "anthropic" -}}
 {{- $aiBaseUrl = "https://api.anthropic.com/v1" -}}
-{{- else if eq $aiAdapter "openai" -}}
+{{- else if or (eq $aiAdapter "openai") (eq $aiAdapter "openai-responses") -}}
 {{- $aiBaseUrl = "https://api.openai.com/v1" -}}
 {{- end -}}
 {{- end -}}
@@ -26,7 +26,7 @@
 {{- $aiModel = .Values.ai.claudeModel -}}
 {{- else if eq $aiAdapter "anthropic" -}}
 {{- $aiModel = "claude-sonnet-4-5" -}}
-{{- else if eq $aiAdapter "openai" -}}
+{{- else if or (eq $aiAdapter "openai") (eq $aiAdapter "openai-responses") -}}
 {{- $aiModel = "gpt-4.1" -}}
 {{- end -}}
 {{- end -}}
@@ -34,7 +34,7 @@
 {{- if not $aiProviderName -}}
 {{- if eq $aiAdapter "anthropic" -}}
 {{- $aiProviderName = "Anthropic" -}}
-{{- else if eq $aiAdapter "openai" -}}
+{{- else if or (eq $aiAdapter "openai") (eq $aiAdapter "openai-responses") -}}
 {{- $aiProviderName = "OpenAI" -}}
 {{- end -}}
 {{- end -}}
@@ -74,8 +74,8 @@
 {{- if and .Values.ai.enabled (not .Values.persistence.enabled) }}
 {{- fail "ai.enabled requires persistence.enabled because Typemill stores AI settings under /var/www/html/settings" }}
 {{- end }}
-{{- if and .Values.ai.enabled (not (or (eq $aiAdapter "openai") (eq $aiAdapter "anthropic") (eq $aiAdapter "none"))) }}
-{{- fail "ai.adapter must be one of 'openai', 'anthropic', or 'none'" }}
+{{- if and .Values.ai.enabled (not (or (eq $aiAdapter "openai") (eq $aiAdapter "openai-responses") (eq $aiAdapter "anthropic") (eq $aiAdapter "none"))) }}
+{{- fail "ai.adapter must be one of 'openai', 'openai-responses', 'anthropic', or 'none'" }}
 {{- end }}
 apiVersion: apps/v1
 kind: Deployment

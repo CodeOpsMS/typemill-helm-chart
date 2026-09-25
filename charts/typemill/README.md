@@ -125,7 +125,7 @@ The following table lists the configurable parameters of the Typemill chart and 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
 | `ai.enabled` | Enable initial Typemill AI configuration bootstrap | `false` |
-| `ai.adapter` | AI adapter to configure (`openai`, `anthropic`, or `none`) | `openai` |
+| `ai.adapter` | AI adapter (`openai`, `openai-responses`, `anthropic`, or `none`) | `openai` |
 | `ai.baseUrl` | AI provider base URL; defaults to the adapter cloud endpoint when empty | `""` |
 | `ai.model` | AI model name as expected by the provider; defaults to a provider-specific model when empty | `""` |
 | `ai.providerName` | Provider name shown to Typemill users | `""` |
@@ -137,8 +137,8 @@ The following table lists the configurable parameters of the Typemill chart and 
 | `ai.service` | Deprecated legacy AI service value; use `ai.adapter` instead | `""` |
 | `ai.chatgptModel` | Deprecated legacy ChatGPT/OpenAI model value; use `ai.model` instead | `gpt-4.1` |
 | `ai.claudeModel` | Deprecated legacy Claude model value; use `ai.model` instead | `claude-sonnet-4-5` |
-| `ai.temperature` | Typemill AI temperature setting | `"0.7"` |
-| `ai.outputTokens` | Typemill maximum output tokens | `4000` |
+| `ai.temperature` | Quoted decimal from 0 to 1; `""` omits temperature from provider requests | `"0.7"` |
+| `ai.outputTokens` | Output token limit: 2000, 4000, 6000, 8000, 10000, 12000, 16000, 20000, 32000, 64000, or 128000 | `4000` |
 | `ai.timeoutSeconds` | AI provider request timeout in seconds | `120` |
 | `ai.reasoningEffort` | Reasoning effort for compatible OpenAI-style models (`""`, `none`, `low`, `medium`, `high`) | `""` |
 | `ai.initContainer.image.repository` | yq image used for YAML bootstrap | `mikefarah/yq` |
@@ -235,7 +235,7 @@ is pinned to a verified OCI index digest.
 | `tests.enabled` | Enable the hardened Helm connectivity test | `true` |
 | `tests.image.repository` | Connectivity test image repository | `busybox` |
 | `tests.image.tag` | Connectivity test image tag | `1.38.0` |
-| `tests.image.digest` | Immutable connectivity test image digest | `sha256:dc2d74...` |
+| `tests.image.digest` | Immutable connectivity test image digest | `sha256:fd7dc9...` |
 | `tests.image.pullPolicy` | Connectivity test pull policy | `IfNotPresent` |
 | `tests.resources` | Connectivity test resource requests and limits | see values.yaml |
 
@@ -382,6 +382,32 @@ Because the bootstrap runs on every pod start, Helm values remain authoritative 
 
 Legacy `ai.service`, `ai.chatgptModel`, `ai.claudeModel`, `ai.secretKeys.chatgptKey`, and `ai.secretKeys.claudeKey` values from chart versions before Typemill 2.23 are still accepted for upgrade compatibility. Prefer the new `ai.adapter`, `ai.baseUrl`, `ai.model`, and `ai.secretKeys.apiKey` values for new deployments.
 
+Typemill v2.27 adds `ai.adapter=openai-responses` for providers that accept
+`POST /responses`. The existing `openai` adapter continues to use `/chat/completions`.
+Set `ai.baseUrl` to the API root, such as `https://api.openai.com/v1`, without either
+endpoint suffix. Both adapters default to that base URL, model `gpt-4.1`, and display
+name `OpenAI`; explicitly select a model supported by your provider. An explicit
+`openai-responses` selection takes precedence over deprecated `ai.service` settings.
+
+To let the provider choose its temperature, set `ai.temperature: ""` (or use
+`--set-string ai.temperature=`). The bootstrap persists the empty string, and Typemill
+omits the parameter from AI requests. The chart keeps `"0.7"` as its default so existing
+deployments retain their behavior. Token limits above 12000 are opt-in and must be
+supported by the selected model.
+
+Example values for a Responses-compatible provider, using an existing Secret:
+
+```yaml
+ai:
+  enabled: true
+  adapter: openai-responses
+  baseUrl: https://api.openai.com/v1
+  model: gpt-4.1
+  existingSecret: typemill-ai-secret
+  temperature: ""
+  outputTokens: 16000
+```
+
 Example for OpenAI:
 
 ```bash
@@ -436,9 +462,40 @@ Each Typemill user still has to agree to the selected AI provider in the Kixote 
 
 ## Upgrading
 
+### Typemill v2.27.0 / Chart 2.3.0
+
+Back up the PVC before upgrading. This is an additive chart update from 2.2.0:
+existing AI settings remain valid, and the default adapter, temperature, output-token
+limit, proxy setting, ports, probes, and seven persistent paths remain unchanged.
+
+- The pinned v2.27.0 image includes fixes for restricted-media path variants,
+  public article/draft/metadata authorization, multilingual write permissions,
+  and SVG sanitization. Symlink-based media downloads now return `404`; review
+  intentional media aliases. API clients must handle the corrected `403`/`404`
+  authorization responses. Existing uploaded SVGs are not automatically re-sanitized;
+  review untrusted uploads already present on the PVC.
+- `openai-responses`, an empty temperature, and the extended token options are now
+  configurable through Helm. General-purpose Ollama configurations can continue
+  using `openai`; switching adapters requires provider support for the chosen API.
+- Dockerfile and startup script are unchanged from v2.26.2: PHP 8.5/Apache,
+  Linux/amd64, port 80, and the existing initialization/ownership behavior remain.
+  The image still sets `TYPEMILL_PROXY_DETECTION=true`; the chart continues to set
+  it explicitly to `false` unless opted in. Persisted `proxy: true` still applies.
+- Cyanine files did not change upstream between v2.26.2 and v2.27.0. Keep
+  `securityMigrations.cyanineV226.image` pinned to its verified v2.26.0 source;
+  updating that tag independently of its hashes/digest is not an application upgrade.
+  Customized templates still require the manual security review documented below.
+- Multilingual indexing, homepage language links, Kixote model selection and long-text
+  rendering were improved upstream. The new Soloprint theme is installed separately
+  through Typemill; the chart does not replace existing themes or plugins.
+
+See the [v2.27.0 release notes](https://github.com/typemill/typemill/releases/tag/v2.27.0)
+and [source comparison](https://github.com/typemill/typemill/compare/v2.26.2...v2.27.0).
+The v2.26 notes below remain relevant when upgrading from older releases.
+
 ### Typemill v2.26.x upgrade classification
 
-This release requires operator review, but the XSS fix, Cyanine migration, and proxy
+The v2.26 upgrade requires operator review, but the XSS fix, Cyanine migration, and proxy
 change are not the same kind of breaking change:
 
 | Area | Classification | What happens during the upgrade | Required action / failure mode |
@@ -474,6 +531,8 @@ created. The chart requires the mounted PVC paths to be writable by the applicat
 storage ownership and permissions explicitly when reusing a partially initialized or
 manually populated claim.
 
+### Upgrade commands
+
 Helm's `--reuse-values` mode can retain defaults from the previously installed chart,
 including an old image digest. With Helm 3.14 or newer, prefer
 `--reset-then-reuse-values` so that new chart defaults are loaded before explicitly
@@ -482,7 +541,7 @@ supplied release values are reapplied:
 ```bash
 helm repo update
 helm upgrade my-typemill typemill/typemill \
-  --version 2.2.1 \
+  --version 2.3.0 \
   --reset-then-reuse-values
 ```
 
@@ -492,7 +551,7 @@ values file and command-line override instead:
 ```bash
 helm repo update
 helm upgrade my-typemill typemill/typemill \
-  --version 2.2.1 \
+  --version 2.3.0 \
   --reset-values \
   --values my-values.yaml
 ```

@@ -89,6 +89,20 @@ jobs:
             --set ai.reasoningEffort=low \
             --set ingress.enabled=false \
             >/tmp/typemill-rendered.yaml
+          helm template ci-responses charts/typemill \
+            --set ai.enabled=true \
+            --set ai.adapter=openai-responses \
+            --set-string ai.temperature= \
+            --set ai.outputTokens=128000 \
+            >/tmp/typemill-responses-rendered.yaml
+          for temperature in 0 0.0 0.25 1 1.0; do
+            helm template ci-temperature charts/typemill \
+              --set ai.enabled=true --set-string "ai.temperature=$temperature" >/dev/null
+          done
+          for tokens in 16000 20000 32000 64000 128000; do
+            helm template ci-tokens charts/typemill \
+              --set ai.enabled=true --set "ai.outputTokens=$tokens" >/dev/null
+          done
 
       - name: Verify unsafe and invalid values are rejected
         if: steps.list-changed.outputs.changed == 'true'
@@ -104,6 +118,12 @@ jobs:
           expect_failure helm template invalid charts/typemill --set autoscaling.enabled=true
           expect_failure helm template invalid charts/typemill --set image.digest=invalid
           expect_failure helm template invalid charts/typemill --set ai.initContainer.image.digest=invalid
+          expect_failure helm template invalid charts/typemill --set ai.adapter=responses
+          expect_failure helm template invalid charts/typemill --set-string ai.temperature=-0.1
+          expect_failure helm template invalid charts/typemill --set-string ai.temperature=1.1
+          expect_failure helm template invalid charts/typemill --set-string ai.temperature=NaN
+          expect_failure helm template invalid charts/typemill --set ai.temperature=0
+          expect_failure helm template invalid charts/typemill --set ai.outputTokens=128001
           expect_failure helm template invalid charts/typemill --set ai.timeoutSeconds=150
           expect_failure helm template invalid charts/typemill --set ai.reasoningEffort=extreme
           expect_failure helm template invalid charts/typemill --set-string securityMigrations.cyanineV226.enabled=invalid
@@ -132,4 +152,6 @@ jobs:
 
       - name: Validate rendered resources against Kubernetes API
         if: steps.list-changed.outputs.changed == 'true'
-        run: kubectl apply --dry-run=server -f /tmp/typemill-rendered.yaml
+        run: |
+          kubectl apply --dry-run=server -f /tmp/typemill-rendered.yaml
+          kubectl apply --dry-run=server -f /tmp/typemill-responses-rendered.yaml

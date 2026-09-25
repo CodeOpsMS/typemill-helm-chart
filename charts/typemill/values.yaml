@@ -73,8 +73,9 @@ ai:
   # This writes/updates AI provider settings in the persisted Typemill settings files
   # on every pod start before the application container starts.
   enabled: false
-  # -- AI adapter to configure. Supported by Typemill: openai, anthropic, none.
-  # Use openai for OpenAI-compatible APIs such as OpenAI, Ollama, LM Studio, LocalAI, vLLM, and OpenRouter.
+  # -- AI adapter to configure: openai, openai-responses, anthropic, or none.
+  # Use openai for /chat/completions; openai-responses for providers supporting /responses.
+  # baseUrl is the API root (for example ending in /v1), without either endpoint suffix.
   adapter: openai
   # -- AI provider base URL. Do not add a trailing slash. Defaults to the adapter's cloud endpoint when empty.
   baseUrl: ""
@@ -99,9 +100,10 @@ ai:
   chatgptModel: gpt-4.1
   # -- Deprecated: legacy Claude model value. Use ai.model instead.
   claudeModel: claude-sonnet-4-5
-  # -- Typemill AI temperature setting as string to match Typemill form values.
+  # -- AI temperature as a quoted decimal from 0 to 1. Set "" to omit temperature from provider requests.
+  # Keep the existing 0.7 default for upgrade compatibility.
   temperature: "0.7"
-  # -- Typemill AI maximum output token setting.
+  # -- AI output token limit: 2000, 4000, 6000, 8000, 10000, 12000, 16000, 20000, 32000, 64000, or 128000.
   outputTokens: 4000
   # -- Typemill AI request timeout in seconds.
   timeoutSeconds: 120
@@ -270,7 +272,7 @@ tests:
     # -- Container image tag for the Helm connectivity test
     tag: "1.38.0"
     # -- Immutable multi-platform digest for the Helm connectivity test image
-    digest: "sha256:dc2d74b28e4cf8984fa52af1f39bc7c3d9c73760b41a74d629f5d11b1ab28616"
+    digest: "sha256:fd7dc98638c8e305f4dc34e979f1c0fdfdcaeb0fbf8fcff77ae834b6da3d7e6e"
     # -- Image pull policy for the Helm connectivity test
     pullPolicy: IfNotPresent
   # -- Resource requests and limits for the Helm connectivity test
