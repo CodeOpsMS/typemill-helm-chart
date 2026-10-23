@@ -134,6 +134,7 @@ jobs:
           expect_failure helm template invalid charts/typemill --set securityMigrations.cyanineV226.image.pullPolicy=Sometimes
           expect_failure helm template invalid charts/typemill --set tests.image.digest=invalid
           expect_failure helm template invalid charts/typemill --set-string typemill.proxyDetection=invalid
+          expect_failure helm template invalid charts/typemill --set-string compatibility.cyanineV2271.enabled=invalid
           expect_failure helm template invalid charts/typemill --set readinessProbe.path=tm/login
           expect_failure helm template invalid charts/typemill --set-string 'typemill.phpIniConfig.bad\.conf=value'
           expect_failure helm template invalid charts/typemill --set ingress.enabled=true --set-json 'ingress.hosts=[]'
@@ -155,3 +156,12 @@ jobs:
         run: |
           kubectl apply --dry-run=server -f /tmp/typemill-rendered.yaml
           kubectl apply --dry-run=server -f /tmp/typemill-responses-rendered.yaml
+
+      - name: Verify v2.27.1 PHP runtime and persistent theme regressions
+        if: steps.list-changed.outputs.changed == 'true'
+        run: |
+          # Keep this historical regression reproducible without constraining
+          # future application upgrades to the v2.27.1 runtime expectations.
+          if helm show chart charts/typemill | grep -Eq '^appVersion: "?v2\.27\.1"?$'; then
+            bash scripts/test-v2271-runtime.sh
+          fi

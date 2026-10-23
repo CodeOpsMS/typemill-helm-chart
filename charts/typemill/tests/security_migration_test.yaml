@@ -74,6 +74,21 @@ tests:
           path: spec.template.spec.initContainers[0].command[2]
           pattern: '(?s)process_file scan cyanine\.yaml.*TYPEMILL_FAIL_ON_MODIFIED.*process_file apply blog\.twig'
 
+  - it: should preserve exact reviewed v2.27.1 stock files before rejecting custom hashes
+    asserts:
+      - matchRegex:
+          path: spec.template.spec.initContainers[0].command[2]
+          pattern: 'home/landingpageNews\.twig:c19896524c3142fbb331d411337ccf9d221981a30043d9fcc16156080776dae4'
+      - matchRegex:
+          path: spec.template.spec.initContainers[0].command[2]
+          pattern: 'partials/posts\.twig:a4b94218d52b74ffd19fdee402d7060960909f592aa0fb098183a22994aab09c'
+      - matchRegex:
+          path: spec.template.spec.initContainers[0].command[2]
+          pattern: 'cyanine\.yaml:4484d7a6488205669472d2cadaacb9c8eb145b130472f3ad014a2582aa00234d'
+      - matchRegex:
+          path: spec.template.spec.initContainers[0].command[2]
+          pattern: '(?s)matches reviewed v2\.27\.1 stock; preserving.*preserving customized'
+
   - it: should use safe defaults when reused old values omit the migration tree
     set:
       securityMigrations: null

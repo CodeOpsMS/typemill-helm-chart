@@ -28,7 +28,7 @@ Use it for handbooks, documentations, manuals, web-novels, traditional websites,
 | **Source** | [GitHub](https://github.com/CodeOpsMS/typemill-helm-chart) |
 | **OCI Registry** | `ghcr.io/codeopsms/helm-charts/typemill` |
 
-The upstream `kixote/typemill` image for Typemill v2.27.0 currently supports Linux/amd64.
+The upstream `kixote/typemill` image for Typemill v2.27.1 currently supports Linux/amd64.
 
 ## Prerequisites
 
@@ -60,6 +60,19 @@ helm install typemill typemill/typemill -f my-values.yaml --namespace typemill -
 ```
 
 See [charts/typemill/README.md](charts/typemill/README.md) for the full parameter reference.
+
+## Typemill v2.27.1 / Chart 2.3.1
+
+PHP security issue fixed: the default Docker image now includes patched **PHP 8.5.12**.
+The image is pinned by digest, and the chart recognizes the reviewed new Cyanine
+stock files so strict-mode restarts remain possible without overwriting custom themes.
+An additional hash-guarded startup workaround corrects the upstream missing-theme-settings
+fallback, preventing fresh-site HTTP 500 without writing persisted settings or themes.
+See the [validation report](docs/operations/typemill-v2271-validation-2026-10-23.md).
+
+Upstream describes this as an early, unfinished v2.28 snapshot for Docker users.
+Back up persistent data and review the
+[upgrade notes](charts/typemill/README.md#typemill-v2271--chart-231) before rollout.
 
 ## Upgrade notice for Typemill v2.26.x
 

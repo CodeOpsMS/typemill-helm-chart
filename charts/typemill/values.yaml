@@ -10,7 +10,7 @@ image:
   tag: ""
   # -- Image digest for immutable pinning. If set, this overrides the tag.
   # To use image.tag, explicitly set this to an empty string.
-  digest: "sha256:7dfb517d24f0c3b430f6f1bdf4b62e585aebd695dc6d18febc23e18674e945c4"
+  digest: "sha256:a1982fcfdde1317b41ddd83924f99bd44aa103cd86cceadb473c19275eef501a"
 
 # -- Image pull secrets for private registries
 imagePullSecrets: []
@@ -158,6 +158,13 @@ strategy:
 
 # -- Termination grace period in seconds
 terminationGracePeriodSeconds: 60
+
+compatibility:
+  cyanineV2271:
+    # -- Correct the v2.27.1 missing-theme-settings fallback in the ephemeral application layer.
+    # Hash-guarded; never creates settings.yaml or changes persisted themes/configuration.
+    # Disable for custom v2.27.1 images with modified Settings.php. Skipped for other app versions.
+    enabled: true
 
 securityMigrations:
   cyanineV226:

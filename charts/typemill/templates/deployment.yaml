@@ -63,6 +63,17 @@
 {{- $cyanineV226SecurityContext := get $cyanineV226 "securityContext" | default $defaultCyanineV226SecurityContext -}}
 {{- $cyanineV226Resources := get $cyanineV226 "resources" | default dict -}}
 {{- $runCyanineV226 := and .Values.persistence.enabled $cyanineV226Enabled -}}
+{{- $compatibility := .Values.compatibility | default dict -}}
+{{- $cyanineV2271 := get $compatibility "cyanineV2271" | default dict -}}
+{{- $cyanineV2271Enabled := true -}}
+{{- if hasKey $cyanineV2271 "enabled" -}}
+{{- $cyanineV2271Enabled = get $cyanineV2271 "enabled" -}}
+{{- end -}}
+{{- $compatibilityVersion := .Values.image.tag | default .Chart.AppVersion -}}
+{{- if .Values.image.digest -}}
+{{- $compatibilityVersion = .Chart.AppVersion -}}
+{{- end -}}
+{{- $runCyanineV2271 := and $cyanineV2271Enabled (eq $compatibilityVersion "v2.27.1") -}}
 {{- $typemillValues := .Values.typemill | default dict -}}
 {{- $proxyDetection := false -}}
 {{- if hasKey $typemillValues "proxyDetection" -}}
@@ -221,6 +232,19 @@ spec:
                   fi
                   return
                 fi
+                # Reviewed stock files from Typemill v2.27.1 / Cyanine 2.5.0
+                # retain the v2.26 escaping fixes. Accept only exact path/hash
+                # pairs; never downgrade them to the historical source image.
+                case "${relative_path}:${current_sha}" in
+                  home/landingpageNews.twig:c19896524c3142fbb331d411337ccf9d221981a30043d9fcc16156080776dae4|\
+                  partials/posts.twig:a4b94218d52b74ffd19fdee402d7060960909f592aa0fb098183a22994aab09c|\
+                  cyanine.yaml:4484d7a6488205669472d2cadaacb9c8eb145b130472f3ad014a2582aa00234d)
+                    if [ "$mode" = "scan" ]; then
+                      echo "Cyanine v2.26 migration: ${relative_path} matches reviewed v2.27.1 stock; preserving."
+                    fi
+                    return
+                    ;;
+                esac
                 if [ "$current_sha" != "$old_sha" ]; then
                   if ! mark_modified "preserving customized ${relative_path}; apply the upstream v2.26 security changes manually."; then
                     exit 1
@@ -375,6 +399,18 @@ spec:
           {{- end }}
           image: {{ include "typemill.image" . | quote }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- if $runCyanineV2271 }}
+          # Keep the image's docker-php-entrypoint and original server startup.
+          # The guarded correction changes only the ephemeral application layer.
+          args:
+            - /bin/sh
+            - -ec
+            - |
+              php <<'TYPEMILL_CYANINE_V2271'
+              {{- .Files.Get "files/cyanine-v2271-fallback.php" | nindent 14 }}
+              TYPEMILL_CYANINE_V2271
+              exec /var/www/html/docker-utils/init-server
+          {{- end }}
           ports:
             - name: http
               containerPort: 80

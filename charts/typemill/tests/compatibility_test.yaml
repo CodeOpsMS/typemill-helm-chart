@@ -1,0 +1,77 @@
+suite: v2.27.1 compatibility workaround tests
+templates:
+  - templates/deployment.yaml
+tests:
+  - it: should wrap the original command without replacing the image entrypoint
+    asserts:
+      - notExists:
+          path: spec.template.spec.containers[0].command
+      - equal:
+          path: spec.template.spec.containers[0].args[0]
+          value: /bin/sh
+      - equal:
+          path: spec.template.spec.containers[0].args[1]
+          value: -ec
+      - matchRegex:
+          path: spec.template.spec.containers[0].args[2]
+          pattern: 'exec /var/www/html/docker-utils/init-server'
+      - matchRegex:
+          path: spec.template.spec.containers[0].args[2]
+          pattern: 'a6a1a7751e5d735b8a2bea6c802b0407d5d629d0765bbb1ada075a334174044e'
+      - matchRegex:
+          path: spec.template.spec.containers[0].args[2]
+          pattern: 'f273572502d6960d4cf45f6a123bce3585e630187918c1d69e77285eca5efe87'
+
+  - it: should also protect ephemeral installations
+    set:
+      persistence.enabled: false
+    asserts:
+      - exists:
+          path: spec.template.spec.containers[0].args
+      - isNull:
+          path: spec.template.spec.initContainers
+
+  - it: should use safe defaults for old reused values without compatibility settings
+    set:
+      compatibility: null
+    asserts:
+      - exists:
+          path: spec.template.spec.containers[0].args
+
+  - it: should allow custom images to opt out
+    set:
+      compatibility.cyanineV2271.enabled: false
+    asserts:
+      - notExists:
+          path: spec.template.spec.containers[0].args
+
+  - it: should not wrap explicitly different application versions
+    set:
+      image.tag: v2.28.0
+      image.digest: ""
+    asserts:
+      - notExists:
+          path: spec.template.spec.containers[0].args
+
+  - it: should not constrain future chart application upgrades
+    chart:
+      appVersion: v2.28.0
+    asserts:
+      - notExists:
+          path: spec.template.spec.containers[0].args
+
+  - it: should keep the actual runtime version guard with custom digest overrides
+    asserts:
+      - matchRegex:
+          path: spec.template.spec.containers[0].args[2]
+          pattern: "not v2.27.1; leaving application code unchanged"
+      - matchRegex:
+          path: spec.template.spec.containers[0].args[2]
+          pattern: 'unrecognized Settings.php; refusing to modify custom code'
+
+  - it: should respect digest precedence over a stale tag
+    set:
+      image.tag: v2.25.0
+    asserts:
+      - exists:
+          path: spec.template.spec.containers[0].args
