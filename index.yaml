@@ -4,6 +4,67 @@ entries:
   - annotations:
       artifacthub.io/category: integration-delivery
       artifacthub.io/changes: |
+        - kind: security
+          description: Update Typemill to v2.27.1; fix the Docker PHP security issue with PHP 8.5.12
+        - kind: fixed
+          description: Recognize verified Cyanine 2.5.0 files without blocking strict-mode restarts
+        - kind: fixed
+          description: Guarded v2.27.1 theme-settings fallback correction prevents fresh-site HTTP 500 without changing persisted data
+      artifacthub.io/containsSecurityUpdates: "true"
+      artifacthub.io/images: |
+        - name: typemill
+          image: kixote/typemill:v2.27.1
+        - name: typemill-cyanine-v226-migration
+          image: kixote/typemill:v2.26.0
+        - name: yq
+          image: mikefarah/yq:4.53.3
+        - name: busybox
+          image: busybox:1.38.0
+      artifacthub.io/license: MIT
+      artifacthub.io/links: |
+        - name: Typemill Documentation
+          url: https://docs.typemill.net/
+        - name: Typemill Source
+          url: https://github.com/typemill/typemill
+        - name: Docker Image
+          url: https://hub.docker.com/r/kixote/typemill
+        - name: support
+          url: https://github.com/codeopsms/typemill-helm-chart/issues
+      artifacthub.io/screenshots: |
+        - title: Typemill Editor
+          url: https://typemill.net/media/original/typemill-editor-072025.webp
+    apiVersion: v2
+    appVersion: v2.27.1
+    created: "2026-10-23T06:30:28.69032422Z"
+    description: Helm chart for Typemill - a lightweight open-source flat-file CMS
+      for creating websites and eBooks from Markdown.
+    digest: 50f231862a908810fe30c7952cc307462de13fa60d0f0b4da52a5ca631d652f4
+    home: https://typemill.net
+    icon: https://typemill.net/media/live/typemill-hero-1.png
+    keywords:
+    - typemill
+    - cms
+    - flat-file
+    - markdown
+    - documentation
+    - ebook
+    - wiki
+    kubeVersion: '>=1.19.0-0'
+    maintainers:
+    - email: maintainer@example.com
+      name: codeopsms
+      url: https://github.com/codeopsms
+    name: typemill
+    sources:
+    - https://github.com/typemill/typemill
+    - https://hub.docker.com/r/kixote/typemill
+    type: application
+    urls:
+    - https://github.com/CodeOpsMS/typemill-helm-chart/releases/download/typemill-2.3.1/typemill-2.3.1.tgz
+    version: 2.3.1
+  - annotations:
+      artifacthub.io/category: integration-delivery
+      artifacthub.io/changes: |
         - kind: changed
           description: Update Typemill to v2.27.0
         - kind: security
@@ -689,4 +750,4 @@ entries:
     urls:
     - https://codeopsms.github.io/typemill-helm-chart/typemill-1.0.0.tgz
     version: 1.0.0
-generated: "2026-09-25T08:56:35.076305355Z"
+generated: "2026-10-23T06:30:28.690419418Z"
