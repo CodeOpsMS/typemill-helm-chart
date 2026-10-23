@@ -4,8 +4,8 @@ description: >-
   Helm chart for Typemill - a lightweight open-source flat-file CMS
   for creating websites and eBooks from Markdown.
 type: application
-version: 2.3.1
-appVersion: "v2.27.1"
+version: 2.3.2
+appVersion: "v2.28.0"
 kubeVersion: ">=1.19.0-0"
 keywords:
   - typemill
@@ -27,17 +27,13 @@ icon: https://typemill.net/media/live/typemill-hero-1.png
 annotations:
   artifacthub.io/license: MIT
   artifacthub.io/category: integration-delivery
-  artifacthub.io/containsSecurityUpdates: "true"
+  artifacthub.io/containsSecurityUpdates: "false"
   artifacthub.io/changes: |
-    - kind: security
-      description: Update Typemill to v2.27.1; fix the Docker PHP security issue with PHP 8.5.12
-    - kind: fixed
-      description: Recognize verified Cyanine 2.5.0 files without blocking strict-mode restarts
-    - kind: fixed
-      description: Guarded v2.27.1 theme-settings fallback correction prevents fresh-site HTTP 500 without changing persisted data
+    - kind: changed
+      description: Update Typemill to v2.28.0
   artifacthub.io/images: |
     - name: typemill
-      image: kixote/typemill:v2.27.1
+      image: kixote/typemill:v2.28.0
     - name: typemill-cyanine-v226-migration
       image: kixote/typemill:v2.26.0
     - name: yq

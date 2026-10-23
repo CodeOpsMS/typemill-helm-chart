@@ -10,7 +10,7 @@ image:
   tag: ""
   # -- Image digest for immutable pinning. If set, this overrides the tag.
   # To use image.tag, explicitly set this to an empty string.
-  digest: "sha256:a1982fcfdde1317b41ddd83924f99bd44aa103cd86cceadb473c19275eef501a"
+  digest: "sha256:dc92861ac28b6507ebc3a449430e77da1127de06371f73a15a73d7408b2ced32"
 
 # -- Image pull secrets for private registries
 imagePullSecrets: []
