@@ -51,7 +51,8 @@ initialize_fixture() {
     require "/var/www/html/system/vendor/autoload.php";
     $path = "/var/www/html/settings/settings.yaml";
     $settings = ["title" => "Typemill CI", "author" => "CI",
-      "language" => "en", "theme" => "cyanine", "proxy" => false];
+      "language" => "en", "theme" => "cyanine", "proxy" => false,
+      "displayErrorDetails" => true];
     if (file_put_contents($path, Symfony\Component\Yaml\Yaml::dump($settings)) === false) { exit(1); }
     chown($path, 33);
     chgrp($path, 33);
@@ -70,7 +71,10 @@ check_runtime() {
       $body = curl_exec($ch);
       $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
       echo "$path: HTTP $status\n";
-      if ($body === false || $status !== 200) { exit(1); }
+      if ($body === false || $status !== 200) {
+        fwrite(STDERR, substr(strip_tags((string) $body), 0, 4000) . "\n");
+        exit(1);
+      }
       if (preg_match("/Fatal error|Uncaught .*Exception/", $body)) { exit(1); }
     }
     echo "Typemill $v, PHP " . PHP_VERSION . ", login/homepage and proxy default verified\n";
