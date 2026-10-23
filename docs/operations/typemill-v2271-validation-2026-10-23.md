@@ -2,6 +2,12 @@
 
 ## Ergebnis und Umfang
 
+**Veröffentlichung blockiert:** Die PHP-Version ist bestätigt, aber die frische
+Installation mit Cyanine 2.5.0 liefert ohne gespeicherte Theme-Konfiguration auf
+der Startseite HTTP 500. PR #35 bleibt ungemergt; Release, Pages-Index und OCI-Paket
+2.3.1 sind noch nicht veröffentlicht. Vor der Freigabe ist eine Entscheidung über
+einen gezielten Chart-Workaround oder eine Upstream-Korrektur erforderlich.
+
 Der automatisiert erstellte Branch `chore/update-typemill-v2.27.1` und
 [PR #35](https://github.com/CodeOpsMS/typemill-helm-chart/pull/35) werden für das
 geprüfte Update weiterverwendet. Chart 2.3.1 enthält Typemill v2.27.1 und den
@@ -9,7 +15,7 @@ kurzen Hinweis: **PHP-Sicherheitsfehler im Docker-Image durch PHP 8.5.12 behoben
 Der Hinweis steht auch in den Helm-Installationsnotizen; Artifact Hub ist als
 Security-Update markiert.
 
-Die Veröffentlichung erfolgt nach erfolgreicher CI und Merge über den vorhandenen
+Die geplante Veröffentlichung erfolgt erst nach erfolgreicher CI und Merge über den vorhandenen
 Release-Workflow: GitHub Release `typemill-2.3.1`, Chart-Archiv, GitHub-Pages-Index
 und OCI-Paket `ghcr.io/codeopsms/helm-charts/typemill:2.3.1`. Produktive
 Kubernetes-Releases werden dabei nicht aktualisiert.
@@ -80,7 +86,7 @@ Kubernetes-Rendering.
 
 Der neue versionierte Test `scripts/test-v2271-runtime.sh` läuft in beiden
 CI-Matrix-Jobs ausschließlich auf einem kind-Kontext und in einem zufälligen,
-UID-geprüften Test-Namespace. Er prüft:
+UID-geprüften Test-Namespace. Sein vorgesehener Prüfumfang ist:
 
 - Upgrade von Chart 2.3.0 auf 2.3.1 mit strikter Migration, gleicher PVC-Identität,
   Markern in allen sieben Datenpfaden und bytegleichen vorhandenen Theme-Dateien;
@@ -92,8 +98,42 @@ UID-geprüften Test-Namespace. Er prüft:
   attestierten Dateien sowie Helm-Verbindungstests;
 - abschließendes Entfernen seines eigenen Test-Namespace einschließlich Test-PVCs.
 
-Die Ausführungsergebnisse sind in den erforderlichen Helm-Checks von PR #35
-nachvollziehbar. Der Test ist bewusst auf v2.27.1 begrenzt, damit spätere Releases
+### Tatsächlicher CI-Befund und Release-Blocker
+
+Im [Diagnoselauf](https://github.com/CodeOpsMS/typemill-helm-chart/actions/runs/39909163335)
+bestanden unter Helm 3.21.3 und 4.2.3 die statischen Prüfungen, 143 Unit-Tests,
+chart-testing-Installation/Upgrade und Kubernetes-Dry-runs. Der zusätzliche
+persistente Upgrade-Test bestand ebenfalls: PHP 8.5.12, Typemill 2.27.1,
+Login/Startseite HTTP 200, Neustart, PVC-Identität, Datenmarker, unveränderte alte
+Theme-Dateien und Helm-Verbindungstest.
+
+Die frische Installation startete, der Login lieferte HTTP 200; die Startseite
+scheiterte in beiden Jobs mit HTTP 500:
+
+```text
+Twig\Error\RuntimeError
+The "merge" filter expects a sequence or a mapping, got "bool" for argument 1
+in "index.twig" at line 12.
+```
+
+Die isolierte Fixture speichert eine minimale Site-Konfiguration, aber keine
+Theme-Einstellungen. Upstreams `Settings::addThemeSettings()` lädt deren Fallback
+über `getObjectSettings('themes', 'cyanine')`; `Storage` kennt `themesFolder`,
+nicht `themes`. Der Fallback wird dadurch `false`. Das neue Cyanine-Template
+übergibt diesen Wert ohne Absicherung an `merge`. Die reguläre Setup-Methode
+`Settings::createSettings()` legt ebenfalls keine Theme-Konfiguration an.
+Dieser Befund ist kein PHP-Versionsfehler und kein Helm-Renderingfehler.
+
+Wegen dieses Fehlers wurden der frische strikte Neustart und die anschließenden
+Custom-Hash-Laufzeittests noch nicht erreicht; sie gelten **nicht** als bestanden.
+Beide Test-Namespaces wurden entfernt. Der vorherige Setup-Redirect-Fehler der
+Test-Fixture wurde bereits korrigiert, ohne die HTTP-200-Prüfung abzuschwächen.
+
+Es wurde kein Upstream-Quellcode gepatcht, kein Theme überschrieben und kein
+fehlgeschlagener Check umgangen. Der PHP-Fix-Hinweis und die Paketierung sind
+vorbereitet, aber eine allgemeine Release-Freigabe wäre aktuell verfrüht.
+
+Der Test ist bewusst auf v2.27.1 begrenzt, damit spätere Releases
 nicht an der historischen PHP-Versionsprüfung scheitern.
 
 Ein SUSE-AI-Test war am 23. Oktober nicht möglich: Der API-Hostname wurde bereits

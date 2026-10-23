@@ -465,6 +465,12 @@ Each Typemill user still has to agree to the selected AI provider in the Kixote 
 
 ### Typemill v2.27.1 / Chart 2.3.1
 
+Release validation is currently blocked: a fresh Cyanine 2.5.0 site without saved
+theme settings returns HTTP 500 (`merge` receives `false` in `index.twig:12`).
+The existing-theme upgrade passed, but this candidate must not be published until
+the fresh-install regression is resolved. See the
+[validation report](../../docs/operations/typemill-v2271-validation-2026-10-23.md).
+
 **PHP security issue fixed:** the default Docker image uses patched **PHP 8.5.12**
 (`php:8.5.12-apache-trixie`). The image is pinned to its verified OCI index digest.
 There are no Helm values/API changes; ports, probes, seven persistent directories,
