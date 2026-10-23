@@ -155,3 +155,12 @@ jobs:
         run: |
           kubectl apply --dry-run=server -f /tmp/typemill-rendered.yaml
           kubectl apply --dry-run=server -f /tmp/typemill-responses-rendered.yaml
+
+      - name: Verify v2.27.1 PHP runtime and persistent theme regressions
+        if: steps.list-changed.outputs.changed == 'true'
+        run: |
+          # Keep this historical regression reproducible without constraining
+          # future application upgrades to the v2.27.1 runtime expectations.
+          if helm show chart charts/typemill | grep -Eq '^appVersion: "?v2\.27\.1"?$'; then
+            bash scripts/test-v2271-runtime.sh
+          fi

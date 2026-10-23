@@ -327,7 +327,8 @@ The verified old hashes cover the stock Cyanine files shipped with both Typemill
 and v2.25.0, so direct upgrades from chart 2.0.0 are covered as well:
 
 - five unchanged Cyanine v2.24.2/v2.25 stock files are replaced with the verified v2.26 versions;
-- files already matching v2.26 are left unchanged, making the migration idempotent;
+- files already matching v2.26 or the reviewed v2.27.1 stock hashes at these paths
+  are left unchanged, making the migration idempotent;
 - missing or customized files are never overwritten;
 - customized affected files produce a warning and require manual review against the
   [upstream v2.26 Cyanine security patch](https://github.com/typemill/typemill/commit/1cd145923f882b5f4ed1b6c3600240416a3e579c).
@@ -343,7 +344,7 @@ not retained. Review or override the migration security context when external st
 workflows depend on different file ownership.
 
 Set `securityMigrations.cyanineV226.failOnModified=true` to block startup whenever an
-affected file has a hash the chart cannot attest. A byte-identical v2.26 file unblocks
+affected file has a hash the chart cannot attest. A byte-identical reviewed stock file unblocks
 automatically; an equivalently patched custom file still has a custom hash. After manually
 reviewing such a file, either turn strict mode off or disable this migration explicitly.
 Strict mode completes a read-only preflight of all five paths before replacing any file.
@@ -355,7 +356,7 @@ kubectl logs deployment/my-typemill -c cyanine-v226-security-migration
 
 Disable the migration only after applying and verifying equivalent theme fixes manually.
 With `persistence.enabled=false`, the init container is not needed and is not rendered
-because the v2.26 image supplies the current theme directly.
+because the application image supplies its bundled theme directly.
 
 ## Typemill AI Bootstrap
 
@@ -461,6 +462,31 @@ Service DNS name. Ollama does not need a public Ingress for this integration.
 Each Typemill user still has to agree to the selected AI provider in the Kixote AI interface before using the feature.
 
 ## Upgrading
+
+### Typemill v2.27.1 / Chart 2.3.1
+
+**PHP security issue fixed:** the default Docker image uses patched **PHP 8.5.12**
+(`php:8.5.12-apache-trixie`). The image is pinned to its verified OCI index digest.
+There are no Helm values/API changes; ports, probes, seven persistent directories,
+AI bootstrap and proxy defaults remain unchanged.
+
+Upstream explicitly describes this release as an unfinished v2.28 snapshot published
+for the Docker PHP security patch, not solely a PHP rebuild. It also includes further
+draft/metadata/media authorization fixes and multilingual Cyanine changes. Test your
+plugins, themes and API clients before production rollout; back up the PVC first.
+
+Cyanine is now 2.5.0 and moves page templates into `pages/`. Existing persisted
+themes are preserved: upgrading the application does not install the new theme over
+your current theme. Update themes separately after reviewing customizations; do not
+mix individual new templates into the old layout. The historical v2.26 security
+migration remains pinned to v2.26.0. It additionally recognizes three exact, reviewed
+v2.27.1 stock hashes at its existing paths, preventing false custom-file warnings and
+strict-mode restart failures on new installations. Unknown hashes still warn or block
+according to `failOnModified`; this is not a full-theme integrity check.
+
+See the [upstream release](https://github.com/typemill/typemill/releases/tag/v2.27.1)
+and [source comparison](https://github.com/typemill/typemill/compare/v2.27.0...v2.27.1).
+The existing backup, image-pin and proxy instructions below still apply.
 
 ### Typemill v2.27.0 / Chart 2.3.0
 

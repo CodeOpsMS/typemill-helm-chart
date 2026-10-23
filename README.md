@@ -61,6 +61,16 @@ helm install typemill typemill/typemill -f my-values.yaml --namespace typemill -
 
 See [charts/typemill/README.md](charts/typemill/README.md) for the full parameter reference.
 
+## Typemill v2.27.1 / Chart 2.3.1
+
+PHP security issue fixed: the default Docker image now includes patched **PHP 8.5.12**.
+The image is pinned by digest, and the chart recognizes the reviewed new Cyanine
+stock files so strict-mode restarts remain possible without overwriting custom themes.
+
+Upstream describes this as an early, unfinished v2.28 snapshot for Docker users.
+Back up persistent data and review the
+[upgrade notes](charts/typemill/README.md#typemill-v2271--chart-231) before rollout.
+
 ## Upgrade notice for Typemill v2.26.x
 
 Chart 2.2.0 is not a blanket Helm values/API breaking release, but upgrades from v2.25

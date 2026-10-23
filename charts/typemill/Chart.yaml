@@ -27,10 +27,12 @@ icon: https://typemill.net/media/live/typemill-hero-1.png
 annotations:
   artifacthub.io/license: MIT
   artifacthub.io/category: integration-delivery
-  artifacthub.io/containsSecurityUpdates: "false"
+  artifacthub.io/containsSecurityUpdates: "true"
   artifacthub.io/changes: |
-    - kind: changed
-      description: Update Typemill to v2.27.1
+    - kind: security
+      description: Update Typemill to v2.27.1; fix the Docker PHP security issue with PHP 8.5.12
+    - kind: fixed
+      description: Recognize verified Cyanine 2.5.0 files without blocking strict-mode restarts
   artifacthub.io/images: |
     - name: typemill
       image: kixote/typemill:v2.27.1

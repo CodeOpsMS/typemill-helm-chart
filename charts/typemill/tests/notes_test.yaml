@@ -5,6 +5,20 @@ release:
   name: test-release
   namespace: test-ns
 tests:
+  - it: should mention the PHP security fix for v2.27.1
+    chart:
+      appVersion: v2.27.1
+    asserts:
+      - matchRegexRaw:
+          pattern: 'PHP security fix:.*patched PHP 8\.5\.12'
+
+  - it: should not show the historical PHP fix for another version
+    chart:
+      appVersion: v2.28.0
+    asserts:
+      - notMatchRegexRaw:
+          pattern: 'patched PHP 8\.5\.12'
+
   - it: should show ingress URL when ingress is enabled
     set:
       ingress.enabled: true

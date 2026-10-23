@@ -3,6 +3,11 @@ Typemill has been installed!
 Application Version: {{ .Chart.AppVersion }}
 Chart Version: {{ .Chart.Version }}
 
+{{- if eq .Chart.AppVersion "v2.27.1" }}
+
+PHP security fix: the default Typemill v2.27.1 Docker image includes patched PHP 8.5.12.
+{{- end }}
+
 {{- if .Values.ingress.enabled }}
 
 Access Typemill at:

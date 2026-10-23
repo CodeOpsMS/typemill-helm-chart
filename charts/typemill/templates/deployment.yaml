@@ -221,6 +221,19 @@ spec:
                   fi
                   return
                 fi
+                # Reviewed stock files from Typemill v2.27.1 / Cyanine 2.5.0
+                # retain the v2.26 escaping fixes. Accept only exact path/hash
+                # pairs; never downgrade them to the historical source image.
+                case "${relative_path}:${current_sha}" in
+                  home/landingpageNews.twig:c19896524c3142fbb331d411337ccf9d221981a30043d9fcc16156080776dae4|\
+                  partials/posts.twig:a4b94218d52b74ffd19fdee402d7060960909f592aa0fb098183a22994aab09c|\
+                  cyanine.yaml:4484d7a6488205669472d2cadaacb9c8eb145b130472f3ad014a2582aa00234d)
+                    if [ "$mode" = "scan" ]; then
+                      echo "Cyanine v2.26 migration: ${relative_path} matches reviewed v2.27.1 stock; preserving."
+                    fi
+                    return
+                    ;;
+                esac
                 if [ "$current_sha" != "$old_sha" ]; then
                   if ! mark_modified "preserving customized ${relative_path}; apply the upstream v2.26 security changes manually."; then
                     exit 1
