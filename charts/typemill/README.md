@@ -178,6 +178,12 @@ The following table lists the configurable parameters of the Typemill chart and 
 | `securityMigrations.cyanineV226.securityContext` | Cyanine migration init-container security context | hardened; see `values.yaml` |
 | `securityMigrations.cyanineV226.resources` | Cyanine migration init-container resource requests/limits | `{}` |
 
+### Compatibility workarounds
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `compatibility.cyanineV2271.enabled` | Hash-guarded correction of the v2.27.1 missing-theme-settings fallback in ephemeral application code | `true` |
+
 #### Image digest pinning
 
 The default Typemill image is pinned to the verified v2.27.1 manifest digest. When `image.digest` is set, it takes precedence over `image.tag`. To use a custom tag, clear the digest explicitly:
@@ -465,16 +471,29 @@ Each Typemill user still has to agree to the selected AI provider in the Kixote 
 
 ### Typemill v2.27.1 / Chart 2.3.1
 
-Release validation is currently blocked: a fresh Cyanine 2.5.0 site without saved
-theme settings returns HTTP 500 (`merge` receives `false` in `index.twig:12`).
-The existing-theme upgrade passed, but this candidate must not be published until
-the fresh-install regression is resolved. See the
-[validation report](../../docs/operations/typemill-v2271-validation-2026-10-23.md).
-
 **PHP security issue fixed:** the default Docker image uses patched **PHP 8.5.12**
 (`php:8.5.12-apache-trixie`). The image is pinned to its verified OCI index digest.
-There are no Helm values/API changes; ports, probes, seven persistent directories,
+Existing Helm values remain compatible; ports, probes, seven persistent directories,
 AI bootstrap and proxy defaults remain unchanged.
+
+The chart includes a narrowly scoped startup workaround for the upstream fresh-site
+HTTP 500: `Settings::addThemeSettings()` must load missing theme defaults through
+`themesFolder`, not `themes`. Before the original server startup, the chart corrects
+exactly this call in the **ephemeral** `system/typemill/Models/Settings.php`, checking
+the actual application version and full original/result SHA-256 hashes. An already
+corrected file is accepted; unknown v2.27.1 code blocks startup instead of being
+overwritten. The original image entrypoint and initialization still run. The chart
+does not create `settings.yaml`, bypass the setup wizard, or write themes/settings
+on the PVC; existing saved theme settings remain authoritative. This also works
+without persistence. The application layer must be writable, as already required
+by the upstream startup script.
+
+For custom v2.27.1 images that modify `Settings.php`, review the fix and explicitly
+set `compatibility.cyanineV2271.enabled=false` if the image already handles it.
+The wrapper is omitted for other declared application versions and also checks
+the runtime version for digest overrides. Remove/review this temporary workaround
+when upgrading Typemill. See the
+[validation report](../../docs/operations/typemill-v2271-validation-2026-10-23.md).
 
 Upstream explicitly describes this release as an unfinished v2.28 snapshot published
 for the Docker PHP security patch, not solely a PHP rebuild. It also includes further

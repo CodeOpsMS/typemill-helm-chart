@@ -33,6 +33,8 @@ annotations:
       description: Update Typemill to v2.27.1; fix the Docker PHP security issue with PHP 8.5.12
     - kind: fixed
       description: Recognize verified Cyanine 2.5.0 files without blocking strict-mode restarts
+    - kind: fixed
+      description: Guarded v2.27.1 theme-settings fallback correction prevents fresh-site HTTP 500 without changing persisted data
   artifacthub.io/images: |
     - name: typemill
       image: kixote/typemill:v2.27.1

@@ -63,12 +63,12 @@ See [charts/typemill/README.md](charts/typemill/README.md) for the full paramete
 
 ## Typemill v2.27.1 / Chart 2.3.1
 
-Release candidate: publication is blocked by an upstream Cyanine fresh-install
-HTTP 500 regression. See the [validation report](docs/operations/typemill-v2271-validation-2026-10-23.md).
-
 PHP security issue fixed: the default Docker image now includes patched **PHP 8.5.12**.
 The image is pinned by digest, and the chart recognizes the reviewed new Cyanine
 stock files so strict-mode restarts remain possible without overwriting custom themes.
+An additional hash-guarded startup workaround corrects the upstream missing-theme-settings
+fallback, preventing fresh-site HTTP 500 without writing persisted settings or themes.
+See the [validation report](docs/operations/typemill-v2271-validation-2026-10-23.md).
 
 Upstream describes this as an early, unfinished v2.28 snapshot for Docker users.
 Back up persistent data and review the

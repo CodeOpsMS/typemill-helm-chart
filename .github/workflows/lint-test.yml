@@ -134,6 +134,7 @@ jobs:
           expect_failure helm template invalid charts/typemill --set securityMigrations.cyanineV226.image.pullPolicy=Sometimes
           expect_failure helm template invalid charts/typemill --set tests.image.digest=invalid
           expect_failure helm template invalid charts/typemill --set-string typemill.proxyDetection=invalid
+          expect_failure helm template invalid charts/typemill --set-string compatibility.cyanineV2271.enabled=invalid
           expect_failure helm template invalid charts/typemill --set readinessProbe.path=tm/login
           expect_failure helm template invalid charts/typemill --set-string 'typemill.phpIniConfig.bad\.conf=value'
           expect_failure helm template invalid charts/typemill --set ingress.enabled=true --set-json 'ingress.hosts=[]'

@@ -64,6 +64,8 @@ check_runtime() {
     $v = Symfony\Component\Yaml\Yaml::parseFile("/var/www/html/system/typemill/settings/defaults.yaml")["version"];
     echo "Runtime: Typemill $v, PHP " . PHP_VERSION . "\n";
     if ($v !== "2.27.1" || PHP_VERSION !== "8.5.12") { exit(1); }
+    if (hash_file("sha256", "/var/www/html/system/typemill/Models/Settings.php") !==
+        "f273572502d6960d4cf45f6a123bce3585e630187918c1d69e77285eca5efe87") { exit(1); }
     if (getenv("TYPEMILL_PROXY_DETECTION") !== "false") { exit(1); }
     foreach (["/tm/login", "/"] as $path) {
       $ch = curl_init("http://127.0.0.1" . $path);
@@ -105,6 +107,7 @@ echo "Testing 2.27.0 -> 2.27.1 with persisted stock themes and strict migration"
 RELEASE=upgrade
 h install "$RELEASE" "$WORK/baseline/charts/typemill" --set fullnameOverride="$RELEASE" "${COMMON[@]}"
 initialize_fixture
+CONFIG_BEFORE=$(x sha256sum /var/www/html/settings/settings.yaml)
 PVC_UID=$(k get pvc "$RELEASE" -o jsonpath='{.metadata.uid}')
 BEFORE=$(theme_hashes)
 x sh -ec 'for d in settings media cache plugins data content themes; do touch "/var/www/html/$d/.v2271-marker"; done'
@@ -113,21 +116,62 @@ check_runtime
 restart
 [[ $(k get pvc "$RELEASE" -o jsonpath='{.metadata.uid}') == "$PVC_UID" ]] || fail "PVC replaced"
 [[ $(theme_hashes) == "$BEFORE" ]] || fail "persisted theme changed"
+[[ $(x sha256sum /var/www/html/settings/settings.yaml) == "$CONFIG_BEFORE" ]] || fail "persisted configuration changed"
 x sh -ec 'for d in settings media cache plugins data content themes; do test -f "/var/www/html/$d/.v2271-marker"; done'
 h test "$RELEASE" --logs --timeout=120s
 
 echo "Testing fresh Cyanine 2.5.0 and strict-mode restart"
 RELEASE=fresh
 h install "$RELEASE" "$ROOT/charts/typemill" --set fullnameOverride="$RELEASE" "${COMMON[@]}"
+# The workaround must not create settings.yaml and bypass the real setup wizard.
+x php -r '
+  if (file_exists("/var/www/html/settings/settings.yaml")) { exit(1); }
+  foreach (["/tm/login" => 302, "/tm/setup" => 200] as $path => $expected) {
+    $ch = curl_init("http://127.0.0.1" . $path);
+    curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 15]);
+    if (curl_exec($ch) === false || curl_getinfo($ch, CURLINFO_HTTP_CODE) !== $expected) { exit(1); }
+  }
+  echo "Fresh setup wizard preserved; settings.yaml was not pre-created\n";
+'
 initialize_fixture
+CONFIG_BEFORE=$(x sha256sum /var/www/html/settings/settings.yaml)
 check_runtime
 BEFORE=$(theme_hashes)
 restart
 [[ $(theme_hashes) == "$BEFORE" ]] || fail "new stock theme changed"
+[[ $(x sha256sum /var/www/html/settings/settings.yaml) == "$CONFIG_BEFORE" ]] || fail "fresh configuration changed"
 LOGS=$(k logs "deployment/$RELEASE" -c cyanine-v226-security-migration)
 [[ $(printf '%s\n' "$LOGS" | grep -c 'matches reviewed v2.27.1 stock') == 3 ]] || fail "new hashes not recognized"
 [[ "$LOGS" != *WARNING* ]] || fail "unexpected stock warning"
 h test "$RELEASE" --logs --timeout=120s
+
+echo "Testing saved theme settings, workaround idempotence and unknown-code rejection"
+x php -r '
+  require "/var/www/html/system/vendor/autoload.php";
+  $path = "/var/www/html/settings/settings.yaml";
+  $settings = Symfony\Component\Yaml\Yaml::parseFile($path);
+  $settings["themes"]["cyanine"] = ["landingpage" => true, "introPosition" => "1",
+    "introTitle" => "Retained CI theme title"];
+  file_put_contents($path, Symfony\Component\Yaml\Yaml::dump($settings, 5));
+'
+CONFIG_BEFORE=$(x sha256sum /var/www/html/settings/settings.yaml)
+restart
+[[ $(x sha256sum /var/www/html/settings/settings.yaml) == "$CONFIG_BEFORE" ]] || fail "custom theme configuration changed"
+x php -r '
+  $body = file_get_contents("http://127.0.0.1/");
+  if (!str_contains($body, "Retained CI theme title")) { exit(1); }
+'
+PATCH_SCRIPT="$ROOT/charts/typemill/files/cyanine-v2271-fallback.php"
+k exec -i "deployment/$RELEASE" -c typemill -- php <"$PATCH_SCRIPT"
+check_runtime
+x sh -ec 'cp /var/www/html/system/typemill/Models/Settings.php /tmp/v2271-settings-original; printf "\n// custom\n" >> /var/www/html/system/typemill/Models/Settings.php'
+CUSTOM_CODE=$(x sha256sum /var/www/html/system/typemill/Models/Settings.php)
+if k exec -i "deployment/$RELEASE" -c typemill -- php <"$PATCH_SCRIPT" >"$WORK/unknown-code.log" 2>&1; then
+  fail "workaround accepted unknown application code"
+fi
+grep -q 'unrecognized Settings.php; refusing to modify custom code' "$WORK/unknown-code.log" || fail "wrong code rejection reason"
+[[ $(x sha256sum /var/www/html/system/typemill/Models/Settings.php) == "$CUSTOM_CODE" ]] || fail "custom application code overwritten"
+x sh -ec 'cp /tmp/v2271-settings-original /var/www/html/system/typemill/Models/Settings.php'
 
 # Execute the rendered migration against a modified test theme. All mutation is
 # confined to this disposable namespace; the migration itself must not change it.
@@ -144,4 +188,4 @@ for relative in home/landingpageNews.twig partials/posts.twig cyanine.yaml; do
   x sh -ec 'cp /tmp/v2271-original "/var/www/html/themes/cyanine/$1"; chown 33:33 "/var/www/html/themes/cyanine/$1"' sh "$relative"
 done
 [[ $(theme_hashes) == "$BEFORE" ]] || fail "fixture restoration failed"
-echo "PASS: PHP patch, image, upgrade, PVC, seven paths, old/new themes, restart, strict custom-file rejection and Helm tests"
+echo "PASS: PHP patch, image, upgrade, PVC, seven paths, old/new themes, setup wizard, unchanged settings, workaround guards, restart, strict custom-file rejection and Helm tests"

@@ -38,6 +38,20 @@
         "pullPolicy"
       ]
     },
+    "compatibility": {
+      "type": ["object", "null"],
+      "properties": {
+        "cyanineV2271": {
+          "type": ["object", "null"],
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable the hash-guarded, ephemeral Typemill v2.27.1 theme fallback correction."
+            }
+          }
+        }
+      }
+    },
     "imagePullSecrets": {
       "type": "array",
       "description": "Image pull secrets for private registries"

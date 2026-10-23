@@ -159,6 +159,13 @@ strategy:
 # -- Termination grace period in seconds
 terminationGracePeriodSeconds: 60
 
+compatibility:
+  cyanineV2271:
+    # -- Correct the v2.27.1 missing-theme-settings fallback in the ephemeral application layer.
+    # Hash-guarded; never creates settings.yaml or changes persisted themes/configuration.
+    # Disable for custom v2.27.1 images with modified Settings.php. Skipped for other app versions.
+    enabled: true
+
 securityMigrations:
   cyanineV226:
     # -- Update unchanged persisted Cyanine v2.24.2/v2.25 stock files to the v2.26 security-fixed versions.

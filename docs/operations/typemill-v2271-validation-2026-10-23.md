@@ -2,11 +2,11 @@
 
 ## Ergebnis und Umfang
 
-**Veröffentlichung blockiert:** Die PHP-Version ist bestätigt, aber die frische
-Installation mit Cyanine 2.5.0 liefert ohne gespeicherte Theme-Konfiguration auf
-der Startseite HTTP 500. PR #35 bleibt ungemergt; Release, Pages-Index und OCI-Paket
-2.3.1 sind noch nicht veröffentlicht. Vor der Freigabe ist eine Entscheidung über
-einen gezielten Chart-Workaround oder eine Upstream-Korrektur erforderlich.
+Chart 2.3.1 enthält neben dem PHP-Update einen ausdrücklich freigegebenen,
+hashgesicherten Workaround für den im ersten CI-Lauf gefundenen Cyanine-Fehler.
+Die Korrektur betrifft ausschließlich die flüchtige Anwendungsschicht; gespeicherte
+Themes, Einstellungen und der Setup-Assistent bleiben erhalten. Die Release-Freigabe
+setzt erfolgreiche Helm-3/4-Checks einschließlich der erweiterten Laufzeittests voraus.
 
 Der automatisiert erstellte Branch `chore/update-typemill-v2.27.1` und
 [PR #35](https://github.com/CodeOpsMS/typemill-helm-chart/pull/35) werden für das
@@ -33,7 +33,8 @@ Quellen: [Release](https://github.com/typemill/typemill/releases/tag/v2.27.1),
   PHP-Neubau: 16 Commits enthalten weitere Anwendungsänderungen.
 - Die Docker-Basis ist jetzt explizit `php:8.5.12-apache-trixie`. Linux/amd64,
   Apache/Port 80, Startskript und die sieben persistenten Verzeichnisse bleiben
-  gleich. Neue Helm-Werte oder zusätzliche Volumes sind nicht erforderlich.
+  gleich. Zusätzliche Volumes sind nicht erforderlich; der Chart-Workaround erhält
+  einen abschaltbaren Kompatibilitätswert.
 - Weitere Korrekturen betreffen Zugriffe auf Entwürfe, Ordnerrestriktionen,
   Metadaten und Medien sowie mehrsprachige Seiten. API-Clients müssen strengere
   Berechtigungsprüfungen berücksichtigen. Keine neuen AI-Konfigurationswerte.
@@ -79,7 +80,7 @@ historischen Fünf-Pfade-Prüfung erfasst; sie ist keine vollständige Theme-Att
 
 ## Tests und Grenzen
 
-Lokal mit Helm 4.3.1: striktes Linting, **143/143 Unit-Tests**, Bash-Syntax,
+Lokal mit Helm 4.3.1: striktes Linting, **151/151 Unit-Tests**, Bash-Syntax,
 ShellCheck und `git diff --check` erfolgreich. Die bestehende CI prüft zusätzlich
 Helm 3.21.3 und 4.2.3, Schema-/Negativtests, Installation/Upgrade und serverseitiges
 Kubernetes-Rendering.
@@ -96,9 +97,14 @@ UID-geprüften Test-Namespace. Sein vorgesehener Prüfumfang ist:
   falsche Warnungen oder Theme-Änderungen;
 - weiterhin blockierte, unverändert erhaltene Anpassungen an allen drei neu
   attestierten Dateien sowie Helm-Verbindungstests;
+- Erhalt des Setup-Assistenten ohne vorzeitig angelegte `settings.yaml`, bytegleiche
+  gespeicherte Konfiguration nach Upgrade/Neustart und weiterhin wirksame eigene
+  Theme-Einstellungen;
+- verifizierter Laufzeit-Hash der korrigierten Anwendungsklasse, idempotente
+  Wiederholung und Abweisung unbekannten Codes ohne Überschreiben;
 - abschließendes Entfernen seines eigenen Test-Namespace einschließlich Test-PVCs.
 
-### Tatsächlicher CI-Befund und Release-Blocker
+### Ursprünglicher CI-Befund vor dem Workaround
 
 Im [Diagnoselauf](https://github.com/CodeOpsMS/typemill-helm-chart/actions/runs/39909163335)
 bestanden unter Helm 3.21.3 und 4.2.3 die statischen Prüfungen, 143 Unit-Tests,
@@ -124,14 +130,39 @@ nicht `themes`. Der Fallback wird dadurch `false`. Das neue Cyanine-Template
 `Settings::createSettings()` legt ebenfalls keine Theme-Konfiguration an.
 Dieser Befund ist kein PHP-Versionsfehler und kein Helm-Renderingfehler.
 
-Wegen dieses Fehlers wurden der frische strikte Neustart und die anschließenden
-Custom-Hash-Laufzeittests noch nicht erreicht; sie gelten **nicht** als bestanden.
+Wegen dieses Fehlers wurden im ursprünglichen Diagnoselauf der frische strikte
+Neustart und die anschließenden Custom-Hash-Laufzeittests nicht erreicht.
 Beide Test-Namespaces wurden entfernt. Der vorherige Setup-Redirect-Fehler der
 Test-Fixture wurde bereits korrigiert, ohne die HTTP-200-Prüfung abzuschwächen.
 
-Es wurde kein Upstream-Quellcode gepatcht, kein Theme überschrieben und kein
-fehlgeschlagener Check umgangen. Der PHP-Fix-Hinweis und die Paketierung sind
-vorbereitet, aber eine allgemeine Release-Freigabe wäre aktuell verfrüht.
+Die Veröffentlichung wurde deshalb zunächst gestoppt. Kein fehlgeschlagener Check
+wurde umgangen. Nach ausdrücklicher Zustimmung wurde folgender Workaround ergänzt.
+
+### Freigegebener, begrenzter Workaround
+
+`files/cyanine-v2271-fallback.php` korrigiert beim Containerstart genau den Aufruf
+`getObjectSettings('themes', $settings['theme'])` in `Settings::addThemeSettings()`
+zu `getObjectSettings('themesFolder', $settings['theme'])`. Es werden nur fehlende
+Theme-Defaults zur Laufzeit geladen, keine bestehenden Konfigurationswerte geändert.
+
+- Originalklasse: `a6a1a7751e5d735b8a2bea6c802b0407d5d629d0765bbb1ada075a334174044e`.
+- Korrigierte Klasse: `f273572502d6960d4cf45f6a123bce3585e630187918c1d69e77285eca5efe87`.
+- Tatsächliche Version muss 2.27.1 sein. Nur der exakte Originalhash wird geändert;
+  der Zielhash ist idempotent, andere Hashes und Symlinks werden abgewiesen.
+- Schreiben erfolgt geprüft und atomar im nicht persistenten Anwendungsverzeichnis.
+  Es werden weder PVC-Dateien noch gebündelte Themes oder Standard-YAMLs verändert.
+- Der ursprüngliche Docker-Entrypoint bleibt aktiv; nach erfolgreicher Korrektur
+  wird das originale `docker-utils/init-server` ausgeführt. Fehler stoppen den Start.
+- `compatibility.cyanineV2271.enabled=false` schaltet den Workaround für überprüfte
+  eigene Images ab. Bei anderen deklarierten Versionen wird er nicht gerendert;
+  Digest-Overrides werden zusätzlich anhand der tatsächlichen Version geprüft.
+- Kein Vorab-Anlegen von `settings.yaml`: Das würde die Setup-Erkennung umgehen
+  und könnte durch die reguläre Ersteinrichtung wieder überschrieben werden.
+
+Die abschließenden Laufzeitergebnisse sind über die erforderlichen Helm-Checks von
+[PR #35](https://github.com/CodeOpsMS/typemill-helm-chart/pull/35) nachvollziehbar.
+Sie müssen vor dem Merge vollständig erfolgreich sein; die ursprünglichen Fehlerlogs
+bleiben als Regressionsevidenz erhalten.
 
 Der Test ist bewusst auf v2.27.1 begrenzt, damit spätere Releases
 nicht an der historischen PHP-Versionsprüfung scheitern.
