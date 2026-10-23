@@ -43,17 +43,34 @@ trap 'exit 130' HUP INT TERM
 theme_hashes() {
   x sh -ec 'cd /var/www/html/themes; find cyanine -type f -exec sha256sum {} \; | sort'
 }
+initialize_fixture() {
+  # A site without settings correctly redirects every route to /tm/setup.
+  # Seed only this disposable test site so HTTP checks exercise real templates,
+  # not a successful setup redirect. No credentials or external services needed.
+  x php -r '
+    require "/var/www/html/system/vendor/autoload.php";
+    $path = "/var/www/html/settings/settings.yaml";
+    $settings = ["title" => "Typemill CI", "author" => "CI",
+      "language" => "en", "theme" => "cyanine", "proxy" => false];
+    if (file_put_contents($path, Symfony\Component\Yaml\Yaml::dump($settings)) === false) { exit(1); }
+    chown($path, 33);
+    chgrp($path, 33);
+  '
+}
 check_runtime() {
   x php -r '
     require "/var/www/html/system/vendor/autoload.php";
     $v = Symfony\Component\Yaml\Yaml::parseFile("/var/www/html/system/typemill/settings/defaults.yaml")["version"];
+    echo "Runtime: Typemill $v, PHP " . PHP_VERSION . "\n";
     if ($v !== "2.27.1" || PHP_VERSION !== "8.5.12") { exit(1); }
     if (getenv("TYPEMILL_PROXY_DETECTION") !== "false") { exit(1); }
     foreach (["/tm/login", "/"] as $path) {
       $ch = curl_init("http://127.0.0.1" . $path);
       curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 15]);
       $body = curl_exec($ch);
-      if ($body === false || curl_getinfo($ch, CURLINFO_HTTP_CODE) !== 200) { exit(1); }
+      $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+      echo "$path: HTTP $status\n";
+      if ($body === false || $status !== 200) { exit(1); }
       if (preg_match("/Fatal error|Uncaught .*Exception/", $body)) { exit(1); }
     }
     echo "Typemill $v, PHP " . PHP_VERSION . ", login/homepage and proxy default verified\n";
@@ -83,6 +100,7 @@ COMMON=(--set persistence.size=1Gi --set persistence.retain=false
 echo "Testing 2.27.0 -> 2.27.1 with persisted stock themes and strict migration"
 RELEASE=upgrade
 h install "$RELEASE" "$WORK/baseline/charts/typemill" --set fullnameOverride="$RELEASE" "${COMMON[@]}"
+initialize_fixture
 PVC_UID=$(k get pvc "$RELEASE" -o jsonpath='{.metadata.uid}')
 BEFORE=$(theme_hashes)
 x sh -ec 'for d in settings media cache plugins data content themes; do touch "/var/www/html/$d/.v2271-marker"; done'
@@ -97,6 +115,7 @@ h test "$RELEASE" --logs --timeout=120s
 echo "Testing fresh Cyanine 2.5.0 and strict-mode restart"
 RELEASE=fresh
 h install "$RELEASE" "$ROOT/charts/typemill" --set fullnameOverride="$RELEASE" "${COMMON[@]}"
+initialize_fixture
 check_runtime
 BEFORE=$(theme_hashes)
 restart
