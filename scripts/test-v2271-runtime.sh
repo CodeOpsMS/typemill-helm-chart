@@ -83,7 +83,8 @@ check_runtime() {
   '
   k get pods -l "app.kubernetes.io/instance=$RELEASE" -o json |
     jq -e --arg index "$TARGET" --arg child "$CHILD" '
-      [.items[] | select(.metadata.deletionTimestamp == null)] | length == 1 and all(.[];
+      [.items[] | select(.metadata.deletionTimestamp == null and
+        any(.spec.containers[]; .name == "typemill"))] | length == 1 and all(.[];
         .spec.containers[0].image == ("kixote/typemill@" + $index) and
         (.status.containerStatuses[0].imageID | endswith($index) or endswith($child)) and
         ([.status.initContainerStatuses[].state.terminated.exitCode] | all(. == 0)))
