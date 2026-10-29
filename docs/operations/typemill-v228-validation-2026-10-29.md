@@ -2,10 +2,13 @@
 
 ## Umfang und Quellen
 
-Update im bestehenden [PR #36](https://github.com/CodeOpsMS/typemill-helm-chart/pull/36)
-auf `chore/update-typemill-v2.28.0`. Die Veröffentlichung erfolgt nach erfolgreichen
-Pflichtprüfungen und Merge über `release.yml`: GitHub Release, Helm-Repository auf
-GitHub Pages und OCI-Paket in GHCR.
+Das Update auf `chore/update-typemill-v2.28.0` wurde nach erfolgreichen
+Pflichtprüfungen mit [PR #36](https://github.com/CodeOpsMS/typemill-helm-chart/pull/36)
+gemergt. Der [Release-Workflow](https://github.com/CodeOpsMS/typemill-helm-chart/actions/runs/40922599302)
+veröffentlichte [Chart 2.4.0](https://github.com/CodeOpsMS/typemill-helm-chart/releases/tag/typemill-2.4.0)
+als GitHub Release, im Helm-Repository auf GitHub Pages und als OCI-Paket in GHCR.
+Beide Paketwege wurden anschließend heruntergeladen; ihre entpackten Inhalte
+stimmten vollständig mit dem lokal geprüften Chart überein.
 
 Geprüft wurden die [Upstream-Release-Notizen](https://github.com/typemill/typemill/releases/tag/v2.28.0),
 der [Vergleich mit v2.27.1](https://github.com/typemill/typemill/compare/v2.27.1...v2.28.0)
@@ -63,9 +66,10 @@ Lokal mit Helm 4.3.1 erfolgreich: **153/153 Unit-Tests**, striktes Helm-Linting,
 repräsentative OpenAI-/Responses-Renderings, Bash-Syntax, ShellCheck und
 `git diff --check`.
 
-Die vorgeschriebenen CI-Jobs für Helm 3.21.3 und 4.2.3 prüfen zusätzlich
-Schema-/Negativfälle, Installation und Upgrade, Kubernetes-API-Dry-runs und den
-neuen `scripts/test-v228-runtime.sh`. Der Test verweigert produktive Kontexte und
+Die vorgeschriebenen CI-Jobs für Helm 3.21.3 und 4.2.3 bestanden jeweils alle
+153 Unit-Tests, Schema-/Negativfälle, Installation und Upgrade,
+Kubernetes-API-Dry-runs und den neuen `scripts/test-v228-runtime.sh`.
+Der Test verweigert produktive Kontexte und
 arbeitet ausschließlich in einem zufälligen, UID-geprüften kind-Test-Namespace:
 
 - Upgrade von veröffentlichtem Chart 2.3.1 auf 2.4.0, PHP 8.5.12 und echte
@@ -80,11 +84,48 @@ arbeitet ausschließlich in einem zufälligen, UID-geprüften kind-Test-Namespac
 - Neuinstallation ohne Persistenz und Helm-Verbindungstests;
 - Entfernen des eigenen Test-Namespace einschließlich seiner Test-PVCs.
 
-Die konkreten Laufzeitergebnisse stehen in den beiden erforderlichen Checks von
-[PR #36](https://github.com/CodeOpsMS/typemill-helm-chart/pull/36/checks).
-Beide müssen vor dem Merge vollständig erfolgreich sein.
+Die konkreten Laufzeitergebnisse stehen im erfolgreichen
+[Helm-3/4-CI-Lauf](https://github.com/CodeOpsMS/typemill-helm-chart/actions/runs/40921547066).
+Beide erforderlichen Checks von [PR #36](https://github.com/CodeOpsMS/typemill-helm-chart/pull/36/checks)
+waren vor dem Merge vollständig erfolgreich; beide kind-Test-Namespaces wurden entfernt.
 
-Produktive Cluster wurden nicht verändert. Öffentliche TLS-/Ingress-Pfade,
-produktive Plugins und externe AI-Inferenz sind nicht Teil dieses isolierten Tests.
+## Isolierter SUSE-AI-Clustertest am 29. Oktober 2026
+
+Das veröffentlichte OCI-Paket `ghcr.io/codeopsms/helm-charts/typemill:2.4.0`
+wurde zusätzlich mit Helm 4.3.1 auf dem Cluster `suseai`
+(Kubernetes `v1.34.6+rke2r3`, Linux/amd64) installiert.
+Der Test verwendete ausschließlich den neuen Namespace
+`typemill-v228-smoke-20261029174301-5e286c`, den Release `typemill-smoke`
+und einen eigenen 1-GiB-PVC mit StorageClass `longhorn`.
+Ingress und externe AI-Aufrufe waren deaktiviert; der Service war nur als
+`ClusterIP` erreichbar. Die Anwendung hatte Ressourcenanforderungen von
+100m CPU/128 MiB und Limits von 500m CPU/512 MiB.
+
+| Prüfung | Ergebnis |
+|---|---|
+| Installation des veröffentlichten Charts | Erfolgreich; Anwendungspod `1/1 Running`, keine Container-Neustarts |
+| Laufzeit und Image | Typemill `2.28.0`, PHP `8.5.12`, erwarteter Image-Digest und korrigierter `Settings.php`-Hash bestätigt |
+| Regulärer Setup-Assistent | Vor der Testinitialisierung keine `settings.yaml`; Login HTTP 302, Setup HTTP 200 |
+| Login und Startseite | Nach Initialisierung beide HTTP 200, auch nach dem Pod-Neustart |
+| Strikte Cyanine-Migration | Init-Container erfolgreich; beim Neustart alle drei unveränderten Cyanine-2.5.0-Hashes erkannt, keine Migrationswarnung |
+| Persistenz nach Pod-Neustart | Gleiche PVC-Identität, Datenmarker in allen sieben Verzeichnissen erhalten; Einstellungen und Theme-Dateien bytegleich |
+| Helm-Verbindungstest | `typemill-smoke-test-connection` erfolgreich; Service per internem Cluster-DNS erreichbar |
+| Bereinigung | Test-Namespace einschließlich Pods/PVC gelöscht; Löschung des zugehörigen PV bestätigt |
+| Bestehende Typemill-Deployments | Alle drei weiterhin bereit; UID, Generation und Image gegenüber dem Zustand vor dem Test unverändert |
+
+Der Test lief erfolgreich mit Exitcode 0. Während der initialen
+Harvester-Volume-Bereitstellung traten vorübergehende Attach-/Mount-Warnungen auf;
+sie lösten sich ohne Eingriff. Auch der Helm-Watch stellte nach vorübergehenden
+Rancher-Streamfehlern die Verbindung wieder her und schloss die Installation
+erfolgreich ab. Nach dem Start und nach dem gezielten Neustart waren jeweils
+alle Container bereit, ohne ungeplante Container-Neustarts.
+
+Die ursprünglichen Kubeconfigs blieben unverändert. Für diesen Lauf wurde eine
+temporäre Konfiguration mit der erneuerten Anmeldung und regulärer
+System-CA-Verifikation verwendet und anschließend entfernt.
+
+Öffentliche TLS-/Ingress-Pfade, produktive Plugins und externe AI-Inferenz
+sind nicht Teil dieses isolierten Tests. Bestehende produktive Deployments und
+deren Speicher wurden nicht geändert.
 Vor dem Produktivupgrade PVC sichern und explizite Image-Pins sowie eigene
 Themes/Plugins prüfen.
