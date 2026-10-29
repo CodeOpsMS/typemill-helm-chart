@@ -142,7 +142,7 @@ The following table lists the configurable parameters of the Typemill chart and 
 | `ai.timeoutSeconds` | AI provider request timeout in seconds | `120` |
 | `ai.reasoningEffort` | Reasoning effort for compatible OpenAI-style models (`""`, `none`, `low`, `medium`, `high`) | `""` |
 | `ai.initContainer.image.repository` | yq image used for YAML bootstrap | `mikefarah/yq` |
-| `ai.initContainer.image.tag` | yq image tag | `4.53.3` |
+| `ai.initContainer.image.tag` | yq image tag | `4.54.1` |
 | `ai.initContainer.image.digest` | Immutable yq image digest; overrides tag when set | pinned; see `values.yaml` |
 | `ai.initContainer.securityContext` | Init container security context | `{"runAsGroup":0,"runAsUser":0}` |
 | `ai.initContainer.resources` | Init container resource requests/limits | `{}` |
@@ -469,6 +469,15 @@ Each Typemill user still has to agree to the selected AI provider in the Kixote 
 
 ## Upgrading
 
+### Chart 2.4.1 dependency refresh
+
+Updates the AI bootstrap image to yq 4.54.1, pinned to
+`sha256:4b3d9475d65571d28cbb19544d3820ec2945e4c8b2f18279394282b8dc3a592e`.
+The application remains Typemill v2.28.0. Existing AI values and stored settings
+remain compatible; the bootstrap is tested with an empty temperature, 128000 tokens,
+custom settings and a repeated startup. The historical Cyanine migration retains
+its independently verified v2.26.0 source.
+
 ### Typemill v2.28.0 / Chart 2.4.0
 
 The default image is now the stable Typemill v2.28.0 release, pinned to
@@ -626,7 +635,7 @@ supplied release values are reapplied:
 ```bash
 helm repo update
 helm upgrade my-typemill typemill/typemill \
-  --version 2.4.0 \
+  --version 2.4.1 \
   --reset-then-reuse-values
 ```
 
@@ -636,7 +645,7 @@ values file and command-line override instead:
 ```bash
 helm repo update
 helm upgrade my-typemill typemill/typemill \
-  --version 2.4.0 \
+  --version 2.4.1 \
   --reset-values \
   --values my-values.yaml
 ```
