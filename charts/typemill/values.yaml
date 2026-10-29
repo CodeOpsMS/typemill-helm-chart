@@ -161,9 +161,9 @@ terminationGracePeriodSeconds: 60
 
 compatibility:
   cyanineV2271:
-    # -- Correct the v2.27.1 missing-theme-settings fallback in the ephemeral application layer.
+    # -- Correct the v2.27.1/v2.28.0 missing-theme-settings fallback in the ephemeral application layer.
     # Hash-guarded; never creates settings.yaml or changes persisted themes/configuration.
-    # Disable for custom v2.27.1 images with modified Settings.php. Skipped for other app versions.
+    # Disable for custom v2.27.1/v2.28.0 images with modified Settings.php. Skipped for other app versions.
     enabled: true
 
 securityMigrations:
@@ -279,7 +279,7 @@ tests:
     # -- Container image tag for the Helm connectivity test
     tag: "1.38.0"
     # -- Immutable multi-platform digest for the Helm connectivity test image
-    digest: "sha256:fd7dc98638c8e305f4dc34e979f1c0fdfdcaeb0fbf8fcff77ae834b6da3d7e6e"
+    digest: "sha256:a46257e06c82ad85242d0d38077d0a52d9896389ca60a1a59d3463db586e5fa4"
     # -- Image pull policy for the Helm connectivity test
     pullPolicy: IfNotPresent
   # -- Resource requests and limits for the Helm connectivity test

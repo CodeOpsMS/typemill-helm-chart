@@ -1,4 +1,4 @@
-suite: v2.27.1 compatibility workaround tests
+suite: v2.27.1 and v2.28.0 compatibility workaround tests
 templates:
   - templates/deployment.yaml
 tests:
@@ -47,7 +47,7 @@ tests:
 
   - it: should not wrap explicitly different application versions
     set:
-      image.tag: v2.28.0
+      image.tag: v2.29.0
       image.digest: ""
     asserts:
       - notExists:
@@ -55,7 +55,7 @@ tests:
 
   - it: should not constrain future chart application upgrades
     chart:
-      appVersion: v2.28.0
+      appVersion: v2.29.0
     asserts:
       - notExists:
           path: spec.template.spec.containers[0].args
@@ -64,7 +64,7 @@ tests:
     asserts:
       - matchRegex:
           path: spec.template.spec.containers[0].args[2]
-          pattern: "not v2.27.1; leaving application code unchanged"
+          pattern: "not v2.27.1/v2.28.0; leaving application code unchanged"
       - matchRegex:
           path: spec.template.spec.containers[0].args[2]
           pattern: 'unrecognized Settings.php; refusing to modify custom code'
@@ -72,6 +72,21 @@ tests:
   - it: should respect digest precedence over a stale tag
     set:
       image.tag: v2.25.0
+    asserts:
+      - exists:
+          path: spec.template.spec.containers[0].args
+
+  - it: should continue to protect the previous application version
+    chart:
+      appVersion: v2.27.1
+    asserts:
+      - exists:
+          path: spec.template.spec.containers[0].args
+
+  - it: should protect an explicitly selected v2.28.0 tag
+    set:
+      image.tag: v2.28.0
+      image.digest: ""
     asserts:
       - exists:
           path: spec.template.spec.containers[0].args

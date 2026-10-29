@@ -61,6 +61,18 @@ helm install typemill typemill/typemill -f my-values.yaml --namespace typemill -
 
 See [charts/typemill/README.md](charts/typemill/README.md) for the full parameter reference.
 
+## Typemill v2.28.0 / Chart 2.4.0
+
+Updates to stable Typemill v2.28.0 with multilingual folder-access security fixes,
+a verified image digest and PHP 8.5.12. The hash-guarded theme-settings correction
+remains necessary because the upstream fresh-site bug is still present in v2.28.0.
+The existing compatibility option also covers this version; saved settings, themes,
+plugins and all seven persistent paths are preserved.
+
+Back up persistent data and review the
+[upgrade notes](charts/typemill/README.md#typemill-v2280--chart-240) and
+[validation report](docs/operations/typemill-v228-validation-2026-10-29.md).
+
 ## Typemill v2.27.1 / Chart 2.3.1
 
 PHP security issue fixed: the default Docker image now includes patched **PHP 8.5.12**.

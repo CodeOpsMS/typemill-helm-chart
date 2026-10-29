@@ -1,13 +1,14 @@
 <?php
-// Temporary, hash-guarded fix for Typemill v2.27.1's missing-theme-settings
+// Temporary, hash-guarded fix for Typemill v2.27.1/v2.28.0's missing-theme-settings
 // fallback. Only ephemeral application code is changed, never PVC contents.
 require '/var/www/html/system/vendor/autoload.php';
 $stdout = fopen('php://stdout', 'w');
 $stderr = fopen('php://stderr', 'w');
 
 $defaults = Symfony\Component\Yaml\Yaml::parseFile('/var/www/html/system/typemill/settings/defaults.yaml');
-if (($defaults['version'] ?? null) !== '2.27.1') {
-    fwrite($stdout, "Cyanine fallback: not v2.27.1; leaving application code unchanged.\n");
+$version = $defaults['version'] ?? null;
+if (!in_array($version, ['2.27.1', '2.28.0'], true)) {
+    fwrite($stdout, "Cyanine fallback: not v2.27.1/v2.28.0; leaving application code unchanged.\n");
     exit(0);
 }
 
@@ -53,7 +54,7 @@ CODE;
         throw new RuntimeException('cannot atomically apply verified correction');
     }
     $temporary = null;
-    fwrite($stdout, "Cyanine fallback: corrected v2.27.1 theme settings lookup; persisted settings and themes untouched.\n");
+    fwrite($stdout, "Cyanine fallback: corrected v{$version} theme settings lookup; persisted settings and themes untouched.\n");
 } catch (Throwable $error) {
     fwrite($stderr, 'ERROR: Cyanine fallback: ' . $error->getMessage() . "\n");
     $exitCode = 1;

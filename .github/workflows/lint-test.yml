@@ -165,3 +165,10 @@ jobs:
           if helm show chart charts/typemill | grep -Eq '^appVersion: "?v2\.27\.1"?$'; then
             bash scripts/test-v2271-runtime.sh
           fi
+
+      - name: Verify v2.28.0 runtime and persistent theme regressions
+        if: steps.list-changed.outputs.changed == 'true'
+        run: |
+          if helm show chart charts/typemill | grep -Eq '^appVersion: "?v2\.28\.0"?$'; then
+            bash scripts/test-v228-runtime.sh
+          fi
