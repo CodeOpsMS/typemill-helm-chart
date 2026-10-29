@@ -239,9 +239,18 @@ x php -r '
   echo "AI bootstrap settings and empty secrets verified\n";
 '
 check_runtime
-CONFIG_BEFORE=$(x sha256sum /var/www/html/settings/settings.yaml)
+ai_settings_state() {
+  # The bootstrap may normalize YAML formatting; preserve the actual values.
+  x php -r '
+    require "/var/www/html/system/vendor/autoload.php";
+    $settings = Symfony\Component\Yaml\Yaml::parseFile("/var/www/html/settings/settings.yaml");
+    ksort($settings);
+    echo json_encode($settings, JSON_THROW_ON_ERROR);
+  '
+}
+CONFIG_BEFORE=$(ai_settings_state)
 restart
-[[ $(x sha256sum /var/www/html/settings/settings.yaml) == "$CONFIG_BEFORE" ]] || fail "repeated AI bootstrap changed stored settings"
+[[ $(ai_settings_state) == "$CONFIG_BEFORE" ]] || fail "repeated AI bootstrap changed stored settings"
 h test "$RELEASE" --logs --timeout=120s
 
 echo "PASS: v2.28.0 runtime, image, upgrade, PVC, seven paths, old/new themes, setup wizard, unchanged settings, workaround guards, restart, strict custom-file rejection, ephemeral installation, AI bootstrap and Helm tests"
