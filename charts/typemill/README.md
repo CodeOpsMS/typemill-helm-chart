@@ -16,7 +16,7 @@ Docker image.
 
 - Kubernetes >= 1.19
 - Helm >= 3.8
-- Linux/amd64 nodes for the upstream Typemill v2.27.1 image
+- Linux/amd64 nodes for the upstream Typemill v2.28.0 image
 - (Optional) An Ingress controller for external access
 - (Optional) A StorageClass for persistent storage
 
@@ -182,16 +182,16 @@ The following table lists the configurable parameters of the Typemill chart and 
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
-| `compatibility.cyanineV2271.enabled` | Hash-guarded correction of the v2.27.1 missing-theme-settings fallback in ephemeral application code | `true` |
+| `compatibility.cyanineV2271.enabled` | Hash-guarded correction of the v2.27.1/v2.28.0 missing-theme-settings fallback in ephemeral application code | `true` |
 
 #### Image digest pinning
 
-The default Typemill image is pinned to the verified v2.27.1 manifest digest. When `image.digest` is set, it takes precedence over `image.tag`. To use a custom tag, clear the digest explicitly:
+The default Typemill image is pinned to the verified v2.28.0 manifest digest. When `image.digest` is set, it takes precedence over `image.tag`. To use a custom tag, clear the digest explicitly:
 
 ```yaml
 image:
   repository: kixote/typemill
-  tag: v2.27.1
+  tag: v2.28.0
   digest: ""
 ```
 
@@ -333,7 +333,7 @@ The verified old hashes cover the stock Cyanine files shipped with both Typemill
 and v2.25.0, so direct upgrades from chart 2.0.0 are covered as well:
 
 - five unchanged Cyanine v2.24.2/v2.25 stock files are replaced with the verified v2.26 versions;
-- files already matching v2.26 or the reviewed v2.27.1 stock hashes at these paths
+- files already matching v2.26 or the reviewed v2.27.1/v2.28.0 stock hashes at these paths
   are left unchanged, making the migration idempotent;
 - missing or customized files are never overwritten;
 - customized affected files produce a warning and require manual review against the
@@ -469,6 +469,40 @@ Each Typemill user still has to agree to the selected AI provider in the Kixote 
 
 ## Upgrading
 
+### Typemill v2.28.0 / Chart 2.4.0
+
+The default image is now the stable Typemill v2.28.0 release, pinned to
+`sha256:dc92861ac28b6507ebc3a449430e77da1127de06371f73a15a73d7408b2ced32`
+(Linux/amd64, PHP 8.5.12/Apache). The chart retains the existing values and persistence
+layout. Back up the PVC and use the upgrade commands below; an explicitly configured
+`image.digest` must be updated separately.
+
+Compared with v2.27.1, upstream adds folder-access checks to multilingual creation,
+deletion and Kixote translation updates. Allowed folders now match complete URL
+prefixes such as `de/news` instead of granting access to an entire first-level folder.
+Review restricted-user workflows and handle authorization failures in API clients.
+The stable release also includes the API, multilingual Cyanine and security changes
+already introduced in the v2.27.1 snapshot. Themes and plugins installed on the PVC
+are preserved; update them separately after reviewing customizations.
+
+**The upstream missing-theme-settings bug is still present in v2.28.0.** Its
+`Settings.php` and bundled Cyanine files are unchanged from v2.27.1. The existing
+hash-guarded startup correction therefore also runs for exactly v2.28.0, retaining
+the public option `compatibility.cyanineV2271.enabled`. The runtime version and both
+file hashes remain checked; unknown custom code blocks startup instead of being
+modified. The correction affects only the ephemeral application class, preserves
+the setup wizard, and never writes PVC settings or themes. Disable the option only
+for a reviewed custom image that already fixes the lookup. Other versions are skipped.
+
+The historical Cyanine v2.26 migration keeps its original v2.26.0 source image and
+recognizes the unchanged Cyanine 2.5.0 stock hashes on strict-mode restarts.
+The BusyBox 1.38.0 test-image digest is refreshed to match its upstream tag rebuild;
+the AI bootstrap image and proxy defaults remain unchanged.
+
+See the [upstream release](https://github.com/typemill/typemill/releases/tag/v2.28.0),
+[source comparison](https://github.com/typemill/typemill/compare/v2.27.1...v2.28.0)
+and [validation report](../../docs/operations/typemill-v228-validation-2026-10-29.md).
+
 ### Typemill v2.27.1 / Chart 2.3.1
 
 **PHP security issue fixed:** the default Docker image uses patched **PHP 8.5.12**
@@ -592,7 +626,7 @@ supplied release values are reapplied:
 ```bash
 helm repo update
 helm upgrade my-typemill typemill/typemill \
-  --version 2.3.1 \
+  --version 2.4.0 \
   --reset-then-reuse-values
 ```
 
@@ -602,13 +636,13 @@ values file and command-line override instead:
 ```bash
 helm repo update
 helm upgrade my-typemill typemill/typemill \
-  --version 2.3.1 \
+  --version 2.4.0 \
   --reset-values \
   --values my-values.yaml
 ```
 
 Review `helm get values my-typemill` first. If `image.digest` was explicitly configured,
-replace it with the v2.27.1 digest or intentionally keep the custom pin.
+replace it with the v2.28.0 digest or intentionally keep the custom pin.
 
 Chart 2.0.0 is a major chart release because it makes previously unsafe or
 unsupported configurations explicit: Typemill is restricted to one replica,
@@ -627,7 +661,7 @@ When overriding the application with a mutable tag, clear the default digest as 
 
 ```bash
 helm upgrade my-typemill typemill/typemill \
-  --set image.tag=v2.27.1 \
+  --set image.tag=v2.28.0 \
   --set image.digest=
 ```
 

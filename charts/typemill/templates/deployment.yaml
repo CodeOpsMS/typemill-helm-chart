@@ -73,7 +73,7 @@
 {{- if .Values.image.digest -}}
 {{- $compatibilityVersion = .Chart.AppVersion -}}
 {{- end -}}
-{{- $runCyanineV2271 := and $cyanineV2271Enabled (eq $compatibilityVersion "v2.27.1") -}}
+{{- $runCyanineV2271 := and $cyanineV2271Enabled (has $compatibilityVersion (list "v2.27.1" "v2.28.0")) -}}
 {{- $typemillValues := .Values.typemill | default dict -}}
 {{- $proxyDetection := false -}}
 {{- if hasKey $typemillValues "proxyDetection" -}}
