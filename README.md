@@ -190,7 +190,9 @@ helm plugin install https://github.com/helm-unittest/helm-unittest
 helm unittest charts/typemill
 ```
 
-CI validates the chart with pinned Helm 3 and Helm 4 versions.
+CI validates the chart with helm-unittest 1.2.1 and pinned Helm 3/4 versions.
+The required Helm 3.21.3 / 4.2.3 checks remain in place alongside current stable
+Helm 3.22.1 / 4.3.1 compatibility checks.
 
 ### Template Rendering
 

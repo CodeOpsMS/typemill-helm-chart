@@ -19,6 +19,10 @@ updates:
   # Docker — propose chart image updates for manual tag/digest review
   - package-ecosystem: "docker"
     directory: "/charts/typemill"
+    # The application is updated by auto-update.yml with tag, digest and chart version.
+    # The v2.26 migration source must remain paired with its reviewed file hashes.
+    ignore:
+      - dependency-name: "kixote/typemill"
     schedule:
       interval: "daily"
     commit-message:
