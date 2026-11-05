@@ -1,8 +1,10 @@
 # Abhängigkeitsprüfung und Branch-Bereinigung – 29. Oktober 2026
 
-Die folgenden Updates werden separat in `chore/dependency-refresh-2026-10-29`
-für Chart 2.4.1 vorbereitet. Typemill bleibt auf dem verifizierten v2.28.0-Image.
-Dieser Bericht beschreibt einen Update-PR, kein bereits veröffentlichtes Release.
+Die folgenden Updates wurden am 29. Oktober auf
+`chore/dependency-refresh-2026-10-29` für Chart 2.4.1 vorbereitet. Am 5. November
+wurde dieser bestehende Branch um das Sicherheitsupdate Typemill v2.28.1 ergänzt.
+Den gemeinsamen Release- und Prüfstand dokumentiert der
+[aktuelle Validierungsbericht](typemill-v2281-validation-2026-11-05.md).
 
 | Abhängigkeit | Bisher | Vorbereiteter Stand | Quelle |
 |---|---|---|---|

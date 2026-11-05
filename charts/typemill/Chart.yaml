@@ -5,7 +5,7 @@ description: >-
   for creating websites and eBooks from Markdown.
 type: application
 version: 2.4.1
-appVersion: "v2.28.0"
+appVersion: "v2.28.1"
 kubeVersion: ">=1.19.0-0"
 keywords:
   - typemill
@@ -27,13 +27,19 @@ icon: https://typemill.net/media/live/typemill-hero-1.png
 annotations:
   artifacthub.io/license: MIT
   artifacthub.io/category: integration-delivery
-  artifacthub.io/containsSecurityUpdates: "false"
+  artifacthub.io/containsSecurityUpdates: "true"
   artifacthub.io/changes: |
+    - kind: security
+      description: Update Typemill to v2.28.1 with media, folder-access, password-recovery, SVG and Markdown security fixes
+    - kind: fixed
+      description: Use the native theme-settings fix without the historical startup workaround on v2.28.1
+    - kind: fixed
+      description: Recognize verified Cyanine 2.5.1 stock files during strict-mode restarts
     - kind: changed
-      description: Update the AI bootstrap image to yq 4.54.1 with a verified immutable digest
+      description: Update the AI bootstrap to yq 4.54.1 with a verified immutable digest
   artifacthub.io/images: |
     - name: typemill
-      image: kixote/typemill:v2.28.0
+      image: kixote/typemill:v2.28.1
     - name: typemill-cyanine-v226-migration
       image: kixote/typemill:v2.26.0
     - name: yq
