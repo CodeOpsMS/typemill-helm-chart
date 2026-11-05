@@ -209,4 +209,48 @@ initialize_fixture
 check_runtime
 h test "$RELEASE" --logs --timeout=120s
 
-echo "PASS: v2.28.0 runtime, image, upgrade, PVC, seven paths, old/new themes, setup wizard, unchanged settings, workaround guards, restart, strict custom-file rejection, ephemeral installation and Helm tests"
+echo "Testing the yq AI bootstrap and repeated startup"
+RELEASE=ai-bootstrap
+h install "$RELEASE" "$ROOT/charts/typemill" --set fullnameOverride="$RELEASE" \
+  --set ai.enabled=true --set ai.adapter=openai-responses \
+  --set ai.baseUrl=http://127.0.0.1:9/v1 --set ai.model=ci-no-provider-call \
+  --set-string ai.temperature= --set ai.outputTokens=128000 \
+  --set ai.timeoutSeconds=180 --set ai.reasoningEffort=low "${COMMON[@]}"
+x php -r '
+  require "/var/www/html/system/vendor/autoload.php";
+  $path = "/var/www/html/settings/settings.yaml";
+  $settings = Symfony\Component\Yaml\Yaml::parseFile($path);
+  foreach (["ai_adapter" => "openai-responses", "ai_base_url" => "http://127.0.0.1:9/v1",
+    "ai_model" => "ci-no-provider-call", "aitemperature" => "", "aioutputtoken" => "128000",
+    "aitimeout" => "180", "ai_reasoning_effort" => "low"] as $key => $value) {
+    if (!array_key_exists($key, $settings) || $settings[$key] !== $value) {
+      fwrite(STDERR, "Unexpected AI bootstrap value: $key\n"); exit(1);
+    }
+  }
+  $secrets = Symfony\Component\Yaml\Yaml::parseFile("/var/www/html/settings/secrets.yaml") ?? [];
+  foreach (["ai_api_key", "chatgptKey", "claudeKey"] as $key) {
+    if (array_key_exists($key, $secrets)) { exit(1); }
+  }
+  $settings = array_merge($settings, ["title" => "Typemill AI CI", "author" => "CI",
+    "language" => "en", "theme" => "cyanine", "proxy" => false,
+    "custom_bootstrap_marker" => "preserve"]);
+  if (file_put_contents($path, Symfony\Component\Yaml\Yaml::dump($settings)) === false) { exit(1); }
+  chown($path, 33); chgrp($path, 33);
+  echo "AI bootstrap settings and empty secrets verified\n";
+'
+check_runtime
+ai_settings_state() {
+  # The bootstrap may normalize YAML formatting; preserve the actual values.
+  x php -r '
+    require "/var/www/html/system/vendor/autoload.php";
+    $settings = Symfony\Component\Yaml\Yaml::parseFile("/var/www/html/settings/settings.yaml");
+    ksort($settings);
+    echo json_encode($settings, JSON_THROW_ON_ERROR);
+  '
+}
+CONFIG_BEFORE=$(ai_settings_state)
+restart
+[[ $(ai_settings_state) == "$CONFIG_BEFORE" ]] || fail "repeated AI bootstrap changed stored settings"
+h test "$RELEASE" --logs --timeout=120s
+
+echo "PASS: v2.28.0 runtime, image, upgrade, PVC, seven paths, old/new themes, setup wizard, unchanged settings, workaround guards, restart, strict custom-file rejection, ephemeral installation, AI bootstrap and Helm tests"

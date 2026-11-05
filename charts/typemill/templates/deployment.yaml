@@ -244,6 +244,12 @@ spec:
                     fi
                     return
                     ;;
+                  cyanine.yaml:0abb520649186e4fbeb7b7de9b3a741bb358447397c9e73109d4346c8e584e15)
+                    if [ "$mode" = "scan" ]; then
+                      echo "Cyanine v2.26 migration: ${relative_path} matches reviewed v2.28.1 stock; preserving."
+                    fi
+                    return
+                    ;;
                 esac
                 if [ "$current_sha" != "$old_sha" ]; then
                   if ! mark_modified "preserving customized ${relative_path}; apply the upstream v2.26 security changes manually."; then

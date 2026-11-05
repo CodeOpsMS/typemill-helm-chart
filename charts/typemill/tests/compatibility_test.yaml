@@ -3,6 +3,8 @@ templates:
   - templates/deployment.yaml
 tests:
   - it: should wrap the original command without replacing the image entrypoint
+    chart:
+      appVersion: v2.28.0
     asserts:
       - notExists:
           path: spec.template.spec.containers[0].command
@@ -23,6 +25,8 @@ tests:
           pattern: 'f273572502d6960d4cf45f6a123bce3585e630187918c1d69e77285eca5efe87'
 
   - it: should also protect ephemeral installations
+    chart:
+      appVersion: v2.28.0
     set:
       persistence.enabled: false
     asserts:
@@ -32,6 +36,8 @@ tests:
           path: spec.template.spec.initContainers
 
   - it: should use safe defaults for old reused values without compatibility settings
+    chart:
+      appVersion: v2.28.0
     set:
       compatibility: null
     asserts:
@@ -39,6 +45,8 @@ tests:
           path: spec.template.spec.containers[0].args
 
   - it: should allow custom images to opt out
+    chart:
+      appVersion: v2.28.0
     set:
       compatibility.cyanineV2271.enabled: false
     asserts:
@@ -61,6 +69,8 @@ tests:
           path: spec.template.spec.containers[0].args
 
   - it: should keep the actual runtime version guard with custom digest overrides
+    chart:
+      appVersion: v2.28.0
     asserts:
       - matchRegex:
           path: spec.template.spec.containers[0].args[2]
@@ -70,6 +80,8 @@ tests:
           pattern: 'unrecognized Settings.php; refusing to modify custom code'
 
   - it: should respect digest precedence over a stale tag
+    chart:
+      appVersion: v2.28.0
     set:
       image.tag: v2.25.0
     asserts:
@@ -89,4 +101,19 @@ tests:
       image.digest: ""
     asserts:
       - exists:
+          path: spec.template.spec.containers[0].args
+
+  - it: should use the native v2.28.1 fix without a startup wrapper by default
+    asserts:
+      - notExists:
+          path: spec.template.spec.containers[0].command
+      - notExists:
+          path: spec.template.spec.containers[0].args
+
+  - it: should not patch an explicitly selected v2.28.1 tag
+    set:
+      image.tag: v2.28.1
+      image.digest: ""
+    asserts:
+      - notExists:
           path: spec.template.spec.containers[0].args

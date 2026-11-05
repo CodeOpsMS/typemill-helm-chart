@@ -89,6 +89,15 @@ tests:
           path: spec.template.spec.initContainers[0].command[2]
           pattern: '(?s)matches reviewed v2\.27\.1 stock; preserving.*preserving customized'
 
+  - it: should preserve reviewed Cyanine 2.5.1 settings before rejecting custom hashes
+    asserts:
+      - matchRegex:
+          path: spec.template.spec.initContainers[0].command[2]
+          pattern: 'cyanine\.yaml:0abb520649186e4fbeb7b7de9b3a741bb358447397c9e73109d4346c8e584e15'
+      - matchRegex:
+          path: spec.template.spec.initContainers[0].command[2]
+          pattern: '(?s)matches reviewed v2\.28\.1 stock; preserving.*preserving customized'
+
   - it: should use safe defaults when reused old values omit the migration tree
     set:
       securityMigrations: null

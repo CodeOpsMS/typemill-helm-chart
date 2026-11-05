@@ -31,7 +31,7 @@ tests:
           value: ai-config
       - equal:
           path: spec.template.spec.initContainers[0].image
-          value: mikefarah/yq@sha256:11a1f0b604b13dbbdc662260d8db6f644b22d8553122a25c1b5b2e8713ca6977
+          value: mikefarah/yq@sha256:4b3d9475d65571d28cbb19544d3820ec2945e4c8b2f18279394282b8dc3a592e
       - equal:
           path: spec.template.spec.initContainers[0].securityContext.runAsUser
           value: 0

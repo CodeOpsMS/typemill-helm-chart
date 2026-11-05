@@ -28,7 +28,7 @@ Use it for handbooks, documentations, manuals, web-novels, traditional websites,
 | **Source** | [GitHub](https://github.com/CodeOpsMS/typemill-helm-chart) |
 | **OCI Registry** | `ghcr.io/codeopsms/helm-charts/typemill` |
 
-The upstream `kixote/typemill` image for Typemill v2.28.0 currently supports Linux/amd64.
+The upstream `kixote/typemill` image for Typemill v2.28.1 currently supports Linux/amd64.
 
 ## Prerequisites
 
@@ -60,6 +60,20 @@ helm install typemill typemill/typemill -f my-values.yaml --namespace typemill -
 ```
 
 See [charts/typemill/README.md](charts/typemill/README.md) for the full parameter reference.
+
+## Typemill v2.28.1 / Chart 2.4.1
+
+Security and stability update with verified image pinning, native fixes for fresh
+Cyanine installations, and the prepared AI-bootstrap/tooling dependency refresh.
+The v2.28.1 application starts without the historical theme-patching wrapper.
+
+**Sites with password recovery enabled must configure their canonical FQDN,
+including the URL scheme, before saving other settings.** Without it, recovery
+emails are suppressed. Existing themes and settings are preserved; fresh sites
+receive Cyanine 2.5.1 with a verified strict-mode restart path.
+
+See the [upgrade notes](charts/typemill/README.md#typemill-v2281--chart-241) and
+[validation report](docs/operations/typemill-v2281-validation-2026-11-05.md).
 
 ## Typemill v2.28.0 / Chart 2.4.0
 
@@ -190,7 +204,9 @@ helm plugin install https://github.com/helm-unittest/helm-unittest
 helm unittest charts/typemill
 ```
 
-CI validates the chart with pinned Helm 3 and Helm 4 versions.
+CI validates the chart with helm-unittest 1.2.1 and pinned Helm 3/4 versions.
+The required Helm 3.21.3 / 4.2.3 checks remain in place alongside current stable
+Helm 3.22.1 / 4.3.1 compatibility checks.
 
 ### Template Rendering
 

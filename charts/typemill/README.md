@@ -16,7 +16,7 @@ Docker image.
 
 - Kubernetes >= 1.19
 - Helm >= 3.8
-- Linux/amd64 nodes for the upstream Typemill v2.28.0 image
+- Linux/amd64 nodes for the upstream Typemill v2.28.1 image
 - (Optional) An Ingress controller for external access
 - (Optional) A StorageClass for persistent storage
 
@@ -142,7 +142,7 @@ The following table lists the configurable parameters of the Typemill chart and 
 | `ai.timeoutSeconds` | AI provider request timeout in seconds | `120` |
 | `ai.reasoningEffort` | Reasoning effort for compatible OpenAI-style models (`""`, `none`, `low`, `medium`, `high`) | `""` |
 | `ai.initContainer.image.repository` | yq image used for YAML bootstrap | `mikefarah/yq` |
-| `ai.initContainer.image.tag` | yq image tag | `4.53.3` |
+| `ai.initContainer.image.tag` | yq image tag | `4.54.1` |
 | `ai.initContainer.image.digest` | Immutable yq image digest; overrides tag when set | pinned; see `values.yaml` |
 | `ai.initContainer.securityContext` | Init container security context | `{"runAsGroup":0,"runAsUser":0}` |
 | `ai.initContainer.resources` | Init container resource requests/limits | `{}` |
@@ -182,16 +182,16 @@ The following table lists the configurable parameters of the Typemill chart and 
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
-| `compatibility.cyanineV2271.enabled` | Hash-guarded correction of the v2.27.1/v2.28.0 missing-theme-settings fallback in ephemeral application code | `true` |
+| `compatibility.cyanineV2271.enabled` | Hash-guarded correction for v2.27.1/v2.28.0 only; skipped for natively fixed v2.28.1 | `true` |
 
 #### Image digest pinning
 
-The default Typemill image is pinned to the verified v2.28.0 manifest digest. When `image.digest` is set, it takes precedence over `image.tag`. To use a custom tag, clear the digest explicitly:
+The default Typemill image is pinned to the verified v2.28.1 manifest digest. When `image.digest` is set, it takes precedence over `image.tag`. To use a custom tag, clear the digest explicitly:
 
 ```yaml
 image:
   repository: kixote/typemill
-  tag: v2.28.0
+  tag: v2.28.1
   digest: ""
 ```
 
@@ -333,7 +333,7 @@ The verified old hashes cover the stock Cyanine files shipped with both Typemill
 and v2.25.0, so direct upgrades from chart 2.0.0 are covered as well:
 
 - five unchanged Cyanine v2.24.2/v2.25 stock files are replaced with the verified v2.26 versions;
-- files already matching v2.26 or the reviewed v2.27.1/v2.28.0 stock hashes at these paths
+- files already matching v2.26 or the reviewed v2.27.1/v2.28.0 stock hashes and the v2.28.1 `cyanine.yaml` hash at these paths
   are left unchanged, making the migration idempotent;
 - missing or customized files are never overwritten;
 - customized affected files produce a warning and require manual review against the
@@ -468,6 +468,51 @@ Service DNS name. Ollama does not need a public Ingress for this integration.
 Each Typemill user still has to agree to the selected AI provider in the Kixote AI interface before using the feature.
 
 ## Upgrading
+
+### Typemill v2.28.1 / Chart 2.4.1
+
+This security release pins Typemill v2.28.1 to
+`sha256:45ec7f350014a09c44f2c49386420562593e6b97a2aaeb14115c17a588c1211d`
+(Linux/amd64, PHP 8.5.12/Apache). Existing Helm values, ports and the seven
+persistent directories remain compatible. Back up the PVC before upgrading and
+review explicit image pins; prefer `--reset-then-reuse-values` with Helm 3.14+.
+
+**Password recovery requires an explicit FQDN.** If `recoverpw` is enabled,
+configure the canonical site URL, including scheme and any base path, under
+**Settings → System → Developer → FQDN** (for example
+`https://docs.example.com/basepath`). Do this before saving other settings.
+Without a configured FQDN, recovery emails are suppressed and settings saves are
+rejected while recovery is active. The chart does not infer this security-sensitive
+application setting from an Ingress or overwrite saved configuration.
+
+Upstream fixes media-restriction changes/deletions, folder access on read APIs,
+password-reset URL poisoning, namespaced SVG attributes and unsafe theme Markdown.
+API clients must handle the corrected authorization failures; the unused
+`GET /api/v1/file` endpoint was removed. Review authored raw HTML in theme Markdown,
+which is now rendered in safe mode. Existing uploaded SVG files are not rewritten
+by the chart.
+
+The native theme-settings fallback, setup auto-login and theme CSP lookup are fixed
+upstream. The historical `compatibility.cyanineV2271.enabled` option is retained for
+v2.27.1/v2.28.0 overrides, but the default v2.28.1 pod uses the original image startup
+without a chart code-patching wrapper.
+
+Fresh sites receive Cyanine 2.5.1. Existing persisted themes remain unchanged;
+review and update customized themes separately. Project homepages now use the new
+opt-in **Landingpage** checkbox in the `cyhome` metadata tab. The historical v2.26
+security migration keeps its independently pinned source and additionally recognizes
+the exact reviewed v2.28.1 `cyanine.yaml` hash so strict fresh-site restarts succeed.
+Unknown customized files are still preserved and rejected when strict mode is enabled.
+
+The previously prepared dependency refresh is included: yq 4.54.1 with its verified
+OCI digest, helm-unittest 1.2.1, current Helm compatibility checks and the updated
+release tooling. AI values and stored settings remain compatible; the real bootstrap
+is tested with empty temperature, 128000 tokens and preserved custom settings after
+restart.
+
+See the [upstream release](https://github.com/typemill/typemill/releases/tag/v2.28.1),
+[source comparison](https://github.com/typemill/typemill/compare/v2.28.0...v2.28.1)
+and [validation report](../../docs/operations/typemill-v2281-validation-2026-11-05.md).
 
 ### Typemill v2.28.0 / Chart 2.4.0
 
@@ -626,7 +671,7 @@ supplied release values are reapplied:
 ```bash
 helm repo update
 helm upgrade my-typemill typemill/typemill \
-  --version 2.4.0 \
+  --version 2.4.1 \
   --reset-then-reuse-values
 ```
 
@@ -636,13 +681,13 @@ values file and command-line override instead:
 ```bash
 helm repo update
 helm upgrade my-typemill typemill/typemill \
-  --version 2.4.0 \
+  --version 2.4.1 \
   --reset-values \
   --values my-values.yaml
 ```
 
 Review `helm get values my-typemill` first. If `image.digest` was explicitly configured,
-replace it with the v2.28.0 digest or intentionally keep the custom pin.
+replace it with the v2.28.1 digest or intentionally keep the custom pin.
 
 Chart 2.0.0 is a major chart release because it makes previously unsafe or
 unsupported configurations explicit: Typemill is restricted to one replica,
@@ -661,7 +706,7 @@ When overriding the application with a mutable tag, clear the default digest as 
 
 ```bash
 helm upgrade my-typemill typemill/typemill \
-  --set image.tag=v2.28.0 \
+  --set image.tag=v2.28.1 \
   --set image.digest=
 ```
 
