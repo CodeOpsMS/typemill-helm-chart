@@ -103,7 +103,7 @@ tests:
       - exists:
           path: spec.template.spec.containers[0].args
 
-  - it: should use the native v2.28.1 fix without a startup wrapper by default
+  - it: should use the native v2.28.2 fix without a startup wrapper by default
     asserts:
       - notExists:
           path: spec.template.spec.containers[0].command

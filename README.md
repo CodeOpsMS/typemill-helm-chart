@@ -61,6 +61,16 @@ helm install typemill typemill/typemill -f my-values.yaml --namespace typemill -
 
 See [charts/typemill/README.md](charts/typemill/README.md) for the full parameter reference.
 
+## Typemill v2.28.2 / Chart 2.4.2
+
+Fixes loss of the initial administrator password during setup and preserves stored
+passwords when user updates omit the password field. The image is pinned by digest;
+existing Helm values, Cyanine themes and persistent data remain compatible.
+
+An upgrade prevents further loss but cannot reconstruct an already missing password
+hash. See the [upgrade notes](charts/typemill/README.md#typemill-v2282--chart-242) and
+[validation report](docs/operations/typemill-v2282-validation-2026-11-17.md).
+
 ## Typemill v2.28.1 / Chart 2.4.1
 
 Security and stability update with verified image pinning, native fixes for fresh

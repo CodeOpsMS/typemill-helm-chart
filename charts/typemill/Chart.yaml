@@ -29,8 +29,8 @@ annotations:
   artifacthub.io/category: integration-delivery
   artifacthub.io/containsSecurityUpdates: "false"
   artifacthub.io/changes: |
-    - kind: changed
-      description: Update Typemill to v2.28.2
+    - kind: fixed
+      description: Update Typemill to v2.28.2 to preserve administrator password hashes during setup, login and user updates
   artifacthub.io/images: |
     - name: typemill
       image: kixote/typemill:v2.28.2
