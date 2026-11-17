@@ -4,6 +4,63 @@ entries:
   - annotations:
       artifacthub.io/category: integration-delivery
       artifacthub.io/changes: |
+        - kind: fixed
+          description: Update Typemill to v2.28.2 to preserve administrator password hashes during setup, login and user updates
+      artifacthub.io/containsSecurityUpdates: "false"
+      artifacthub.io/images: |
+        - name: typemill
+          image: kixote/typemill:v2.28.2
+        - name: typemill-cyanine-v226-migration
+          image: kixote/typemill:v2.26.0
+        - name: yq
+          image: mikefarah/yq:4.54.1
+        - name: busybox
+          image: busybox:1.38.0
+      artifacthub.io/license: MIT
+      artifacthub.io/links: |
+        - name: Typemill Documentation
+          url: https://docs.typemill.net/
+        - name: Typemill Source
+          url: https://github.com/typemill/typemill
+        - name: Docker Image
+          url: https://hub.docker.com/r/kixote/typemill
+        - name: support
+          url: https://github.com/codeopsms/typemill-helm-chart/issues
+      artifacthub.io/screenshots: |
+        - title: Typemill Editor
+          url: https://typemill.net/media/original/typemill-editor-072025.webp
+    apiVersion: v2
+    appVersion: v2.28.2
+    created: "2026-11-17T14:04:15.89352178Z"
+    description: Helm chart for Typemill - a lightweight open-source flat-file CMS
+      for creating websites and eBooks from Markdown.
+    digest: dbe138e68bdc1d5ebc3b86f9925a86f33eca24a1151ce2d01ca9b25ecdb6bc07
+    home: https://typemill.net
+    icon: https://typemill.net/media/live/typemill-hero-1.png
+    keywords:
+    - typemill
+    - cms
+    - flat-file
+    - markdown
+    - documentation
+    - ebook
+    - wiki
+    kubeVersion: '>=1.19.0-0'
+    maintainers:
+    - email: maintainer@example.com
+      name: codeopsms
+      url: https://github.com/codeopsms
+    name: typemill
+    sources:
+    - https://github.com/typemill/typemill
+    - https://hub.docker.com/r/kixote/typemill
+    type: application
+    urls:
+    - https://github.com/CodeOpsMS/typemill-helm-chart/releases/download/typemill-2.4.2/typemill-2.4.2.tgz
+    version: 2.4.2
+  - annotations:
+      artifacthub.io/category: integration-delivery
+      artifacthub.io/changes: |
         - kind: security
           description: Update Typemill to v2.28.1 with media, folder-access, password-recovery, SVG and Markdown security fixes
         - kind: fixed
@@ -874,4 +931,4 @@ entries:
     urls:
     - https://codeopsms.github.io/typemill-helm-chart/typemill-1.0.0.tgz
     version: 1.0.0
-generated: "2026-11-05T06:47:08.32236201Z"
+generated: "2026-11-17T14:04:15.893600737Z"
