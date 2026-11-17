@@ -16,7 +16,7 @@ Docker image.
 
 - Kubernetes >= 1.19
 - Helm >= 3.8
-- Linux/amd64 nodes for the upstream Typemill v2.28.1 image
+- Linux/amd64 nodes for the upstream Typemill v2.28.2 image
 - (Optional) An Ingress controller for external access
 - (Optional) A StorageClass for persistent storage
 
@@ -182,16 +182,16 @@ The following table lists the configurable parameters of the Typemill chart and 
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
-| `compatibility.cyanineV2271.enabled` | Hash-guarded correction for v2.27.1/v2.28.0 only; skipped for natively fixed v2.28.1 | `true` |
+| `compatibility.cyanineV2271.enabled` | Hash-guarded correction for v2.27.1/v2.28.0 only; skipped for natively fixed v2.28.1 and later | `true` |
 
 #### Image digest pinning
 
-The default Typemill image is pinned to the verified v2.28.1 manifest digest. When `image.digest` is set, it takes precedence over `image.tag`. To use a custom tag, clear the digest explicitly:
+The default Typemill image is pinned to the verified v2.28.2 manifest digest. When `image.digest` is set, it takes precedence over `image.tag`. To use a custom tag, clear the digest explicitly:
 
 ```yaml
 image:
   repository: kixote/typemill
-  tag: v2.28.1
+  tag: v2.28.2
   digest: ""
 ```
 
@@ -469,6 +469,31 @@ Each Typemill user still has to agree to the selected AI provider in the Kixote 
 
 ## Upgrading
 
+### Typemill v2.28.2 / Chart 2.4.2
+
+This hotfix pins Typemill v2.28.2 to
+`sha256:5b794a65fde9109b79ffd87df821fe6ac99ff60cfa7906083e2d4bd255def11f`
+(Linux/amd64, PHP 8.5.12/Apache). It fixes deletion of the administrator password
+hash during initial setup and protects stored passwords when user updates omit
+the password field. Setup and plugin-authentication paths load the complete user
+record before login.
+
+The chart keeps the existing values, persistent paths, native application startup,
+Cyanine 2.5.1 and the reviewed historical migration source. Existing users and
+settings are preserved. The runtime regression exercises real HTTP setup and
+fresh-session login, rejection of an incorrect password, an upgrade with an
+existing account, and password-hash preservation across user updates and restart.
+
+**Already missing password hashes are not reconstructed by an image upgrade.**
+Restore affected accounts through a known-good backup or configured password
+recovery. The FQDN requirement introduced in v2.28.1 still applies to password
+recovery; review those upgrade notes below. Back up the PVC and review explicit
+image pins before upgrading.
+
+See the [upstream release](https://github.com/typemill/typemill/releases/tag/v2.28.2),
+[source comparison](https://github.com/typemill/typemill/compare/v2.28.1...v2.28.2)
+and [validation report](../../docs/operations/typemill-v2282-validation-2026-11-17.md).
+
 ### Typemill v2.28.1 / Chart 2.4.1
 
 This security release pins Typemill v2.28.1 to
@@ -671,7 +696,7 @@ supplied release values are reapplied:
 ```bash
 helm repo update
 helm upgrade my-typemill typemill/typemill \
-  --version 2.4.1 \
+  --version 2.4.2 \
   --reset-then-reuse-values
 ```
 
@@ -681,13 +706,13 @@ values file and command-line override instead:
 ```bash
 helm repo update
 helm upgrade my-typemill typemill/typemill \
-  --version 2.4.1 \
+  --version 2.4.2 \
   --reset-values \
   --values my-values.yaml
 ```
 
 Review `helm get values my-typemill` first. If `image.digest` was explicitly configured,
-replace it with the v2.28.1 digest or intentionally keep the custom pin.
+replace it with the v2.28.2 digest or intentionally keep the custom pin.
 
 Chart 2.0.0 is a major chart release because it makes previously unsafe or
 unsupported configurations explicit: Typemill is restricted to one replica,
@@ -706,7 +731,7 @@ When overriding the application with a mutable tag, clear the default digest as 
 
 ```bash
 helm upgrade my-typemill typemill/typemill \
-  --set image.tag=v2.28.1 \
+  --set image.tag=v2.28.2 \
   --set image.digest=
 ```
 

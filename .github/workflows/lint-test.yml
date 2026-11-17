@@ -182,3 +182,10 @@ jobs:
           if helm show chart charts/typemill | grep -Eq '^appVersion: "?v2\.28\.1"?$'; then
             bash scripts/test-v2281-runtime.sh
           fi
+
+      - name: Verify v2.28.2 administrator password and persistent regressions
+        if: steps.list-changed.outputs.changed == 'true'
+        run: |
+          if helm show chart charts/typemill | grep -Eq '^appVersion: "?v2\.28\.2"?$'; then
+            bash scripts/test-v2282-runtime.sh
+          fi

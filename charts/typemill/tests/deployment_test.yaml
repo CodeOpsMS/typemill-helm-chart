@@ -20,7 +20,7 @@ tests:
     asserts:
       - equal:
           path: spec.template.spec.containers[0].image
-          value: kixote/typemill@sha256:45ec7f350014a09c44f2c49386420562593e6b97a2aaeb14115c17a588c1211d
+          value: kixote/typemill@sha256:5b794a65fde9109b79ffd87df821fe6ac99ff60cfa7906083e2d4bd255def11f
 
   - it: should fall back to chart appVersion when tag and digest are empty
     set:
@@ -29,7 +29,7 @@ tests:
     asserts:
       - equal:
           path: spec.template.spec.containers[0].image
-          value: kixote/typemill:v2.28.1
+          value: kixote/typemill:v2.28.2
 
   - it: should reject multiple replicas
     set:
